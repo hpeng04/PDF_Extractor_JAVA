@@ -49,39 +49,4 @@ public class Reader {
         }
     }
 
-    protected List<List<Integer>> findLongestChain(List<List<Integer>> locations) {
-        if (locations.isEmpty()) {
-            return locations;
-        }
-
-        // Sort locations by the third element (vertical position)
-        Collections.sort(locations, Comparator.comparingInt(a -> a.get(2)));
-
-        List<List<Integer>> longestChain = new ArrayList<>();
-        List<List<Integer>> currentChain = new ArrayList<>();
-        currentChain.add(locations.get(0));
-
-        for (int i = 1; i < locations.size(); i++) {
-            // Compare the third element of the current and previous locations
-            if (Math.abs(locations.get(i).get(2) - locations.get(i - 1).get(2)) <= 10) {
-                // If the difference is 10 or less, continue the current chain
-                currentChain.add(locations.get(i));
-            } else {
-                // If the difference is more than 10, check if the current chain is the longest
-                if (currentChain.size() > longestChain.size()) {
-                    longestChain = new ArrayList<>(currentChain);
-                }
-                // Start a new chain with the current location
-                currentChain = new ArrayList<>();
-                currentChain.add(locations.get(i));
-            }
-        }
-
-        // Check one last time if the ending chain is the longest
-        if (currentChain.size() > longestChain.size()) {
-            longestChain = currentChain;
-        }
-
-        return longestChain;
-    }
 }

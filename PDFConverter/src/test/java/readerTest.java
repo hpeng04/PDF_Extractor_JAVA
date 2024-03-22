@@ -1,21 +1,23 @@
 import static imgprocessor.PdfImageProcessor.*;
 
 import net.sourceforge.tess4j.ITesseract;
-import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
-import net.sourceforge.tess4j.Word;
+import org.junit.Ignore;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import readers.LineReader;
+import readers.PdfReader;
 import readers.Reader;
 
-import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+@Disabled
 public class readerTest {
 
     @Test
@@ -26,117 +28,87 @@ public class readerTest {
         Reader lineReader = new Reader();
         ITesseract tessReader = lineReader.tessReader;
 
-//        String text = tessReader.doOCR(imgs.get(19));
+        StringBuilder sb = new StringBuilder();
 
-        List<Word> words = tessReader.getWords(imgs.get(0), 3);
-        for (Word word : words) {
-            String text = word.getText();
-            Rectangle rect = word.getBoundingBox();
-            if (text.contains("File:")) {
-                System.out.println(rect);
-                System.out.println(text);
+//        System.out.println(text);
+
+        imgs.forEach((key, value) -> {
+            try {
+                sb.append(tessReader.doOCR(value));
+            } catch (TesseractException e) {
+                throw new RuntimeException(e);
             }
-        }
+        });
+        System.out.println(sb.toString());
+//        List<Word> words = tessReader.getWords(imgs.get(0), 3);
+//        for (Word word : words) {
+//            String text = word.getText();
+//            Rectangle rect = word.getBoundingBox();
+//            if (text.contains("File:")) {
+//                System.out.println(rect);
+//                System.out.println(text);
+//            }
+//        }
 //        System.out.println(words);
     }
 
     @Test
     public void test2() throws IOException, TesseractException {
-//        String filePath = "C:\\Users\\45799\\Desktop\\py\\pdfReader\\PDFs\\example.pdf";
-        String filePath = "C:\\Users\\45799\\Desktop\\py\\pdfReader\\PDFs\\Home 1 PR.pdf";
-
-        Map<Integer, BufferedImage> imgs = convert(filePath);
-        LineReader lineReader = new LineReader();
-        lineReader.setWords(imgs.get(10));
-        String s = lineReader.findTextLine("Fan and Preheater Power");
-        System.out.println(s);
-
-//        String text = tessReader.doOCR(imgs.get(19));
-
-//        System.out.println(words);
-    }
-
-    @Test
-    public void testFileName() throws IOException, TesseractException {
-//        String filePath = "C:\\Users\\45799\\Desktop\\py\\pdfReader\\PDFs\\example.pdf";
-        String filePath = "C:\\Users\\45799\\Desktop\\py\\pdfReader\\PDFs\\Home 1 PR.pdf";
-
-        Map<Integer, BufferedImage> imgs = convert(filePath);
-        LineReader lineReader = new LineReader();
-        lineReader.setWords(imgs.get(0));
-        String fileName = lineReader.findFileName();
-        System.out.println(fileName);
-
-    }
-
-    @Test
-    public void testFanPower() throws IOException, TesseractException {
         String filePath = "C:\\Users\\45799\\Desktop\\py\\pdfReader\\PDFs\\example.pdf";
-//        String filePath = "C:\\Users\\45799\\Desktop\\py\\pdfReader\\PDFs\\Home 1 PR.pdf";
-
+//        String filePath = "C:\\Users\\45799\\Desktop\\py\\pdfReader\\PDFs\\House 3 PR.pdf";
+        Reader lineReader = new Reader();
+        ITesseract tessReader = lineReader.tessReader;
         Map<Integer, BufferedImage> imgs = convert(filePath);
-        LineReader lineReader = new LineReader();
-        lineReader.setWords(imgs.get(10));
-        String power = lineReader.findFanPower();
-//        System.out.println(power);
-        List<String> powers = new ArrayList<>(Arrays.asList(power.split("\\n")));
-        String P0 = new String();
-        String P25 = new String();
-        System.out.println(powers);
-        for (String p : powers) {
-            if (p.contains("Fan and Preheater Power at 0.0 ")) P0 = p;
-            if (p.contains("Fan and Preheater Power at -25 ")) P25 = p;
-        }
-        System.out.println("P0:" + P0);
-        System.out.println("P25:" + P25);
-    }
 
-    @Test
-    public void testSensibleHeat() throws IOException, TesseractException {
-        String filePath = "C:\\Users\\45799\\Desktop\\py\\pdfReader\\PDFs\\example.pdf";
-//        String filePath = "C:\\Users\\45799\\Desktop\\py\\pdfReader\\PDFs\\Home 1 PR.pdf";
+//        List<Word> s = tessReader.getWords(imgs.get(11), 2);
+//        for (Word w : s) {
+//            System.out.println(w.getText());
+////            System.out.println(w);
+//        }
+//        System.out.println(s);
 
-        Map<Integer, BufferedImage> imgs = convert(filePath);
-        LineReader lineReader = new LineReader();
-        lineReader.setWords(imgs.get(10));
-        String heat = lineReader.findSensibleHeat();
-        System.out.println(heat);
+//        System.out.println("----------------------------");
+//        String text = tessReader.doOCR(imgs.get(18));
+//        System.out.println(text);
 
-    }
-
-    @Test
-    public void testVent() throws IOException, TesseractException {
-        String filePath = "C:\\Users\\45799\\Desktop\\py\\pdfReader\\PDFs\\example.pdf";
-//        String filePath = "C:\\Users\\45799\\Desktop\\py\\pdfReader\\PDFs\\Home 1 PR.pdf";
-
-        Map<Integer, BufferedImage> imgs = convert(filePath);
-        LineReader lineReader = new LineReader();
-        lineReader.setWords(imgs.get(11));
-        String vent = lineReader.findVentEload();
-        System.out.println(vent);
-
-    }
-
-    @Test
-    public void testWaterHeatingEquip() throws IOException, TesseractException {
-        String filePath = "C:\\Users\\45799\\Desktop\\py\\pdfReader\\PDFs\\example.pdf";
-//        String filePath = "C:\\Users\\45799\\Desktop\\py\\pdfReader\\PDFs\\Home 1 PR.pdf";
-
-        Map<Integer, BufferedImage> imgs = convert(filePath);
-        LineReader lineReader = new LineReader();
-        lineReader.setWords(imgs.get(12));
-        String temp = lineReader.findWaterHeatingEquipment();
-        List<String> water_heating_list = new ArrayList<>(Arrays.asList(temp.split("\\n")));
-        String water_heating = null;
-        for (int i = 0; i < water_heating_list.size(); i++) {
-            if (water_heating_list.get(i).matches("Equipment:") && i != 0) {
-                water_heating = water_heating_list.get(i - 1);
+        imgs.forEach((key, value) -> {
+            try {
+                String t = tessReader.doOCR(value);
+                System.out.println(t);
+            } catch (TesseractException e) {
+                throw new RuntimeException(e);
             }
-        }
-        if (water_heating != null) {
-            water_heating = water_heating.replace("Water Heating", "").stripLeading();
-        }
-        System.out.println(water_heating);
+        });
 
     }
+
+
+
+
+    @Test
+    public void matcherTest(){
+        String line = "Design Heat Loss* at -30.0 °C (22.19 \n" +
+                "Watts / m3):\n" +
+                "11415 Watts";
+        Pattern valuePattern = Pattern.compile("(\\d+)(\\s?)(BTU/h|Watts)");
+        Matcher valueMatcher = valuePattern.matcher(line);
+
+        while (valueMatcher.find()) {
+            System.out.println("Found value: " + valueMatcher.group(1));
+        }
+
+
+    }
+
+    @Test
+    public void test3() {
+        double value = 100.6786897;
+        List<Integer> values = new ArrayList<>();
+        values.add(0, 123);
+        values.add(0, 1112);
+        values.add(0, 1233);
+        System.out.println(values);
+    }
+
+
 }

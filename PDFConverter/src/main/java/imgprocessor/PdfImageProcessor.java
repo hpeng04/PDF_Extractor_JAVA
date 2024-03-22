@@ -7,12 +7,9 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class PdfImageProcessor {
@@ -24,20 +21,69 @@ public class PdfImageProcessor {
             PDFRenderer pdfRenderer = new PDFRenderer(document);
 
             for (int page = 0; page < document.getNumberOfPages(); page++) {
-                BufferedImage img = processPage(pdfRenderer, page);
+                BufferedImage img = cropPage(pdfRenderer, page);
                 cachedImages.put(page, img);
             }
         }
         return cachedImages;
     }
 
-    private static BufferedImage processPage(PDFRenderer renderer, int pageNumber) throws IOException {
-        BufferedImage image = renderer.renderImageWithDPI(pageNumber, 300);
+//    public static Map<Integer, BufferedImage> convert(String filePath){
+//        Map<Integer, BufferedImage> cachedImages = new HashMap<>();
+//        ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+//
+//        try (PDDocument document = Loader.loadPDF(new File(filePath))) {
+//            PDFRenderer pdfRenderer = new PDFRenderer(document);
+//            // List to hold Future objects representing the tasks
+//            Map<Integer, Future<BufferedImage>> futures = new HashMap<>();
+//
+//            for (int page = 0; page < document.getNumberOfPages(); page++) {
+//                final int pageNumber = page;
+//                // Submit a callable task for each page to be rendered and cropped
+//                futures.put(pageNumber, executor.submit(() -> cropPage(pdfRenderer, pageNumber)));
+//            }
+//
+//            // Wait for all tasks to complete and collect the results
+//            for (Map.Entry<Integer, Future<BufferedImage>> entry : futures.entrySet()) {
+//                cachedImages.put(entry.getKey(), entry.getValue().get());
+//            }
+//        } catch (IOException | InterruptedException | ExecutionException e) {
+//            throw new RuntimeException(e);
+//        } finally {
+//            // Shutdown the executor and wait for any running tasks to finish
+//            executor.shutdown();
+//            try {
+//                if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+//                    executor.shutdownNow();
+//                }
+//            } catch (InterruptedException ie) {
+//                executor.shutdownNow();
+//                Thread.currentThread().interrupt();
+//            }
+//        }
+//        return cachedImages;
+//    }
+    public static Map<Integer, BufferedImage> convert(File file) throws IOException {
+        Map<Integer, BufferedImage> cachedImages = new HashMap<>();
+
+        try (PDDocument document = Loader.loadPDF(file)) {
+            PDFRenderer pdfRenderer = new PDFRenderer(document);
+
+            for (int page = 0; page < document.getNumberOfPages(); page++) {
+                BufferedImage img = cropPage(pdfRenderer, page);
+                cachedImages.put(page, img);
+            }
+        }
+        return cachedImages;
+    }
+
+    private static BufferedImage cropPage(PDFRenderer renderer, int pageNumber) throws IOException {
+        BufferedImage image = renderer.renderImageWithDPI(pageNumber, 400);
         int width = image.getWidth();
         int height = image.getHeight();
 
         int top = (int) (height * 0.05);
-        int bottom = (int) (height * 0.95);
+        int bottom = (int) (height * 1);
 
         return image.getSubimage(0, top, width, bottom - top);
     }
