@@ -3,13 +3,11 @@ package service;
 import lombok.Getter;
 import model.Fields;
 import model.PdfData;
-import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.Sheet;
 import util.TreeNode;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -18,6 +16,7 @@ public class TreeBuilder implements ITreeBuilder {
     @Getter
     private TreeNode<Object> tree;
     private static final Map<String, Integer> monthOrder;
+    private static final Map<String, Integer> occupantsOrder;
     private int fileIndex = -1;
     static {
         monthOrder = new HashMap<>();
@@ -34,14 +33,17 @@ public class TreeBuilder implements ITreeBuilder {
         monthOrder.put("Nov", 11);
         monthOrder.put("Dec", 12);
         monthOrder.put("Ann", 13);
+        occupantsOrder = new HashMap<>();
+        occupantsOrder.put("ADULTS", 1);
+        occupantsOrder.put("CHILDREN", 2);
+        occupantsOrder.put("INFANTS", 3);
     }
 
     @Override
-    public void buildTreeFromPDF(List<PdfData> pdfDataList, List<String> fileType) {
+    public void buildTreeFromPDF(List<PdfData> pdfDataList, List<String> fileType) throws Exception {
         if (this.tree == null) {
             this.tree = new TreeNode<>();
         }
-
 
 
         for (int j = 0; j < pdfDataList.size(); j++) {
@@ -53,24 +55,47 @@ public class TreeBuilder implements ITreeBuilder {
             TreeNode<Object> tempWindowChar = new TreeNode<>();
             TreeNode<Object> tempBuildingParam = new TreeNode<>();
             TreeNode<Object> tempBuildingAssembly = new TreeNode<>();
-            TreeNode<Object> tempOccupants = new TreeNode<>("Occupants", true, -1);
-            tempOccupants.addChild(new TreeNode<>(pdfData.getOccupants(), false, fileIndex));
 
             for (Fields field : Fields.values()) {
                 switch (field) {
                     case ADULTS, CHILDREN, INFANTS -> {}
+                    case OCCUPANTS -> {
+                        String parentTitle = field.getParent();
+                        String title = field.getTitle();
+                        HashMap<String, String> unsortedMap = (HashMap<String, String>) get(field.getFieldName(), pdfData);
+                        if (unsortedMap == null || unsortedMap.isEmpty()) {
+                            writeTree(parentTitle, title, "", fileIndex);
+                        } else {
+                            Map<String, String> occupants = new TreeMap<>(Comparator.comparingInt(occupantsOrder::get));
+                            occupants.putAll(unsortedMap);
+                            StringBuilder occupantsString = new StringBuilder();
+                            occupants.forEach((type, values) -> occupantsString.append(values));
+
+
+                            writeTree(parentTitle, title, occupantsString, fileIndex);
+                            // clean memory
+                            occupants = null;
+                            unsortedMap = null;
+                        }
+                    }
                     case INTERIOR_WALL, EXTERIOR_WALL -> {
                         String parentTitle = field.getParent();
                         String typeTitle = field.getTitle();
-                        String type = get(field.getFieldName() + "Type", pdfData).toString();
-                        String rValueTitle = field.getFieldName().replace("type", "") + "R-Value";
-                        String rValue = get(field.getFieldName() + "RValue", pdfData).toString();
+                        String type = get(field.getFieldName() + "Type", pdfData) == null ?
+                                " " : get(field.getFieldName() + "Type", pdfData).toString();
+
+                        String rValueTitle = field.getFieldName().replace("type", "") + "R-Value RSI";
+                        String rValue = get(field.getFieldName() + "RValue", pdfData) == null ?
+                                " " : get(field.getFieldName() + "RValue", pdfData).toString();
 
                         writeTree(parentTitle, typeTitle, type, fileIndex);
                         writeTree(parentTitle, rValueTitle, rValue, fileIndex);
                     }
                     case WINDOW_CHARACTERISTICS -> {
                         HashMap<String, List<List<String>>> windowCharacteristics = pdfData.getWindowCharacteristics();
+                        if (windowCharacteristics == null || windowCharacteristics.isEmpty()) {
+                            break;
+                        }
                         windowCharacteristics.forEach((orientation, characteristics) -> {
                             String parentTitle = field.getParent() + "-" + orientation;
                             for (int i = 0; i < characteristics.size(); i++) {
@@ -80,20 +105,22 @@ public class TreeBuilder implements ITreeBuilder {
                                 String areaValue = characteristics.get(i).get(0);
                                 writeTree(tempWindowChar, parentTitle, areaTitle, areaValue, fileIndex);
                                 // RSI
-                                String rsiTitle = orientation + " " + num + "Window RSI"; // e.g. South 01 Window RSI
+                                String rsiTitle = orientation + " " + num + " Window RSI"; // e.g. South 01 Window RSI
                                 String rsiValue = characteristics.get(i).get(1);
                                 writeTree(tempWindowChar, parentTitle, rsiTitle, rsiValue, fileIndex);
                                 // SHGC
-                                String shgcTitle = orientation + " " + num + "SHGC"; // e.g. South 01 SHGC
+                                String shgcTitle = orientation + " " + num + " SHGC"; // e.g. South 01 SHGC
                                 String shgcValue = characteristics.get(i).get(2);
                                 writeTree(tempWindowChar, parentTitle, shgcTitle, shgcValue, fileIndex);
                             }
                         });
+                        // clean memory
+                        windowCharacteristics = null;
                     }
                     case CEILING_COMPONENTS, MAIN_WALL_COMPONENTS, EXPOSED_FLOORS, DOORS -> {
                         List<List<String>> components = (List<List<String>>) get(field.getFieldName(), pdfData);
                         String parentTitle = field.getParent();
-                        if (components != null) {
+                        if (components != null && !components.isEmpty()) {
                             for (int i = 0; i < components.size(); i++) {
                                 int num = i + 1;
                                 // Area
@@ -106,9 +133,14 @@ public class TreeBuilder implements ITreeBuilder {
                                 writeTree(tempBuildingParam, parentTitle, rsiTitle, rsiValue, fileIndex);
                             }
                         }
+                        // clean memory
+                        components = null;
                     }
                     case BUILDING_ASSEMBLY_DETAILS -> {
                         HashMap<String, List<String>> assemblyDetails = (HashMap<String, List<String>>) get(field.getFieldName(), pdfData);
+                        if (assemblyDetails == null || assemblyDetails.isEmpty()) {
+                            break;
+                        }
                         assemblyDetails.forEach((component, rsis) -> {
                             String parentTitle = field.getParent() + "-" + component;
                             for (int i = 0; i < rsis.size(); i++) {
@@ -118,9 +150,14 @@ public class TreeBuilder implements ITreeBuilder {
                                 writeTree(tempBuildingAssembly, parentTitle, rsiTitle, rsiValue, fileIndex);
                             }
                         });
+                        // clean memory
+                        assemblyDetails = null;
                     }
                     case BUILDING_PARAMETERS_ZONE_1, BUILDING_PARAMETERS_ZONE_2 -> {
                         HashMap<String, List<String>> parameters = (HashMap<String, List<String>>) get(field.getFieldName(), pdfData);
+                        if (parameters == null || parameters.isEmpty()) {
+                            break;
+                        }
                         String parentTitle = field.getParent();
                         parameters.forEach((component, values) -> {
                             // Area Net
@@ -136,17 +173,24 @@ public class TreeBuilder implements ITreeBuilder {
                             String heatLossValue = values.get(2);
                             writeTree(parentTitle, heatLossTitle, heatLossValue, fileIndex);
                         });
-
+                        // clean memory
+                        parameters = null;
                     }
                     case VENTILATION_REQUIREMENTS -> {
-                        HashMap<String, String> requirements = (HashMap<String, String>) get(field.getFieldName(), pdfData);
+                        LinkedHashMap<String, String> requirements = (LinkedHashMap<String, String>) get(field.getFieldName(), pdfData);
+                        if (requirements == null || requirements.isEmpty()) {
+                            break;
+                        }
                         String parentTitle = field.getParent();
-                        requirements.forEach((rooms, value) -> {
-                            writeTree(parentTitle, rooms, value, fileIndex);
-                        });
+                        requirements.forEach((rooms, value) -> writeTree(parentTitle, rooms, value, fileIndex));
+                        // clean memory
+                        requirements = null;
                     }
                     case AIR_LEAKAGE_MECHANICAL_VENTILATION -> {
                         List<String> airLeakage = (List<String>) get(field.getFieldName(), pdfData);
+                        if (airLeakage == null || airLeakage.isEmpty()) {
+                            break;
+                        }
                         String parentTitle = field.getParent();
                         // Volume
                         String volumeTitle = "House Volume (m^3)";
@@ -156,9 +200,15 @@ public class TreeBuilder implements ITreeBuilder {
                         String mjTitle = "Heat Loss (MJ)";
                         String mjValue = airLeakage.get(1);
                         writeTree(parentTitle, mjTitle, mjValue, fileIndex);
+
+                        // clean memory
+                        airLeakage = null;
                     }
                     case SPACE_HEATING_SYSTEM_PERFORMANCE -> {
                         HashMap<String, List<String>> unsortedMap = (HashMap<String, List<String>>) get(field.getFieldName(), pdfData);
+                        if (unsortedMap == null || unsortedMap.isEmpty()) {
+                            break;
+                        }
                         Map<String, List<String>> systemPerformance = new TreeMap<>(Comparator.comparingInt(monthOrder::get));
                         systemPerformance.putAll(unsortedMap);
                         String parentTitle = field.getParent();
@@ -176,9 +226,16 @@ public class TreeBuilder implements ITreeBuilder {
                             String systemCopValue = value.get(2);
                             writeTree(parentTitle, systemCopTitle, systemCopValue, fileIndex);
                         });
+
+                        // clean memory
+                        systemPerformance = null;
+                        unsortedMap = null;
                     }
                     case MONTHLY_ESTIMATED_ENERGY_CONSUMPTION_BY_DEVICE -> {
                         HashMap<String, List<String>> unsortedMap = (HashMap<String, List<String>>) get(field.getFieldName(), pdfData);
+                        if (unsortedMap == null || unsortedMap.isEmpty()) {
+                            break;
+                        }
                         Map<String, List<String>> energyConsumption = new TreeMap<>(Comparator.comparingInt(monthOrder::get));
                         energyConsumption.putAll(unsortedMap);
                         String parentTitle = field.getParent();
@@ -212,11 +269,15 @@ public class TreeBuilder implements ITreeBuilder {
                             String acValue = value.get(6);
                             writeTree(parentTitle, acTitle, acValue, fileIndex);
                         });
+
+                        // clean memory
+                        energyConsumption = null;
+                        unsortedMap = null;
                     }
                     default -> {
                         String parentTitle = field.getParent();
                         String title = field.getTitle();
-                        Object value = get(field.getFieldName(), pdfData);
+                        Object value = get(field.getFieldName(), pdfData) == null ? " " : get(field.getFieldName(), pdfData);
                         writeTree(parentTitle, title, value, fileIndex);
                     }
                 }
@@ -225,28 +286,72 @@ public class TreeBuilder implements ITreeBuilder {
             // add the occupants
 //            if (!tree.containsData("OCCUPANTS")) {
 //
-//            }
-            tree.getNode("GENERAL HOUSE CHARACTERISTICS").insert(tempOccupants,
-                    tree.getNode("GENERAL HOUSE CHARACTERISTICS").getIndex("Year House Built") + 1);
+////            }
+//            tree.getNode("GENERAL HOUSE CHARACTERISTICS").insert(tempOccupants,
+//                    tree.getNode("GENERAL HOUSE CHARACTERISTICS").getIndex("Year House Built") + 1);
 
             // add the window characteristics
-            for (TreeNode<Object> child : tempWindowChar.getChildren()) {
-                tree.insert(child, tree.getIndex("HOUSE TEMPERATURES") + 1);
+            if (tempWindowChar != null && tempWindowChar.getChildren() != null) {
+                for (TreeNode<Object> child : tempWindowChar.getChildren()) {
+                    this.tree.insert(child, this.tree.getIndex("HOUSE TEMPERATURES") + 1);
+                }
             }
             // add the building parameters
-            for (TreeNode<Object> child : tempBuildingParam.getChildren()) {
-                tree.insert(child, tree.getIndex("Above grade fraction of") + 1);
+            if (tempBuildingParam != null && tempBuildingParam.getChildren() != null) {
+                for (TreeNode<Object> child : tempBuildingParam.getChildren()) {
+                    this.tree.insert(child, this.tree.getIndex("Above grade fraction of") + 1);
+                }
             }
             // add the building assembly details
-            for (TreeNode<Object> child : tempBuildingParam.getChildren()) {
-                tree.insert(child, tree.getIndex("Foundations") + 1);
+            if (tempBuildingAssembly != null && tempBuildingAssembly.getChildren() != null) {
+                for (TreeNode<Object> child : tempBuildingAssembly.getChildren()) {
+                    this.tree.insert(child, this.tree.getIndex("Foundations") + 1);
+                }
             }
         }
 
+        // sort contents to desired order (below are reversed order)
+        List<String> windowCharOrder = Arrays.asList("WINDOW CHARACTERISTICS-Southwest", "WINDOW CHARACTERISTICS-Northwest", "WINDOW CHARACTERISTICS-Northeast",
+                "WINDOW CHARACTERISTICS-Southeast", "WINDOW CHARACTERISTICS-West", "WINDOW CHARACTERISTICS-North",
+                "WINDOW CHARACTERISTICS-East", "WINDOW CHARACTERISTICS-South");
 
+        List<String> buildingParamOrder = Arrays.asList("Building Parameter Details - Doors", "Building Parameter Details - Exposed Floors",
+                "Building Parameter Details - Main Wall Components", "Building Parameter Details - Ceiling Components");
+
+        List<String> buildingAssemblyOrder = Arrays.asList("Building Assembly Details-FLOORS ABOVE", "Building Assembly Details-EXPOSED FLOORS",
+                "Building Assembly Details-MAIN WALL COMPONENTS", "Building Assembly Details-CEILING COMPONENTS");
+
+        sortContentParent(windowCharOrder, this.tree, "HOUSE TEMPERATURES");
+        sortContentParent(buildingParamOrder, this.tree, "Above grade fraction of");
+        sortContentParent(buildingAssemblyOrder, this.tree, "Foundations");
+
+        // sort contents to desired order (below are normal order)
+        List<String> buildingParamZone1Order = Arrays.asList("Ceiling", "Main Walls", "Doors", "Exposed floors",
+                "South Windows", "East Windows", "North Windows", "West Windows", "Southeast Windows",
+                "Northeast Windows", "Northwest Windows", "Southwest Windows", "Slab on Grade");
+
+        List<String> buildingParamZone2Order = Arrays.asList("Walls above grade", "South Windows", "East Windows", "North Windows",
+                "West Windows", "Southeast Windows", "Northeast Windows", "Northwest Windows", "Southwest Windows",
+                "Basement floor header", "Pony walls", "Below grade foundation");
+
+        List<String> ventilationRequirementsOrder = Arrays.asList("Kitchen, Living Room, Dining Room", "Utility Room",
+                "Bedroom", "Bathroom", "Other", "Basement Rooms");
+
+        sortContentChild(buildingParamZone1Order, this.tree, "Building Parameters Summary - Zone 1: Above grade");
+        sortContentChild(buildingParamZone2Order, this.tree, "Building Parameters Summary - Zone 2: Basement");
+        sortContentChild(ventilationRequirementsOrder, this.tree, "F326 Ventilation Requirements");
+
+        // clean memory
+        windowCharOrder = null;
+        buildingParamOrder = null;
+        buildingAssemblyOrder = null;
+        buildingParamZone1Order = null;
+        buildingParamZone2Order = null;
+        ventilationRequirementsOrder = null;
 
     }
-//    @Override
+
+
     public void buildTreeFromExcel(Sheet sheet) {
         if (this.tree == null) {
             this.tree = new TreeNode<>();
@@ -283,6 +388,40 @@ public class TreeBuilder implements ITreeBuilder {
 
             }
         }
+    }
+
+    // sort content to desired order for WINDOW CHARACTERISTICS, Building Parameter Details, Building Assembly Details,
+    private void sortContentParent(List<String> order, TreeNode<Object> tree, String index) {
+        TreeNode<Object>[] temp = new TreeNode[order.size()];
+        for (int i = 0; i < order.size(); i++) {
+            if (tree.containsTitle(order.get(i))) {
+                temp[i] = tree.getNode(order.get(i));
+                tree.removeChild(order.get(i));
+            }
+        }
+
+        for (TreeNode<Object> node : temp) {
+            if (node != null) {
+                tree.insert(node, tree.getIndex(index) + 1);
+            }
+        }
+    }
+    // sort content to desired order for Building Parameters Summary, and F326 Ventilation Requirements
+    private void sortContentChild(List<String> order, TreeNode<Object> tree, String parentTitle) {
+        TreeNode<Object> parent = tree.getNode(parentTitle);
+        if (parent == null) return;
+
+        List<TreeNode<Object>> tempList = new ArrayList<>();
+        for (String s : order) {
+            for (TreeNode<Object> childTitle : parent.getChildren()) {
+                if (childTitle.containsPartialTitle(s)) {
+                    tempList.add(childTitle);
+
+                }
+            }
+        }
+        parent.removeAllChildren();
+        tempList.forEach(parent::addChild);
     }
 
     private void writeTree(String parentTitle, String title, Object value, int fileIndex) {

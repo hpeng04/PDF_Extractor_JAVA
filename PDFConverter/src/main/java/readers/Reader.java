@@ -1,11 +1,8 @@
 package readers;
 
-import java.awt.image.BufferedImage;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import net.sourceforge.tess4j.*;
+import net.sourceforge.tess4j.ITesseract;
+import net.sourceforge.tess4j.Tesseract;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;

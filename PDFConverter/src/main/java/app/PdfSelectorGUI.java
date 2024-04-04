@@ -5,7 +5,6 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import service.DataExtractor;
 import service.ExcelWriter;
-import service.ITreeBuilder;
 import service.TreeBuilder;
 
 import javax.swing.*;
@@ -21,10 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -37,7 +33,7 @@ public class PdfSelectorGUI extends JFrame {
     private JTable table;
     private File lastPdfDirectory;
     private File lastExcelDirectory;
-    private Map<String, String> typeSelection = new HashMap<>();
+    private Map<String, String> typeSelection = new LinkedHashMap<>();
 
     public PdfSelectorGUI() {
         super("PDF Extractor");
@@ -160,12 +156,13 @@ public class PdfSelectorGUI extends JFrame {
 
         if (userSelection == JFileChooser.APPROVE_OPTION) {
             File fileToSave = fileChooser.getSelectedFile();
-            lastExcelDirectory = fileToSave.getParentFile();
-            saveLastSelectedDirectory(EXCEL);
+
             // Check if the user has provided an extension; if not, append ".xlsx"
             if (!filter.accept(fileToSave)) {
                 fileToSave = new File(fileToSave.toString() + ".xlsx");
             }
+            lastExcelDirectory = fileToSave.getParentFile();
+            saveLastSelectedDirectory(EXCEL);
 
             ProgressDialog progressDialog = new ProgressDialog(null, "Processing...");
             progressDialog.showDialog();
@@ -212,25 +209,52 @@ public class PdfSelectorGUI extends JFrame {
                     typeSelection.forEach((pdfName, fileType) -> {
                         DataExtractor extractor = new DataExtractor();
                         extractor.extractData(new File(pdfName));
-                        if (extractor.isMultipleFiles()) {
-                            pdfList.add(extractor.processData2(extractor));
-                            fileTypeList.add("N/A");
-                            if (extractor.getLowConfContent().size() > 0) {
-                                lowConfList.add("-------------------\n" + pdfName + "\n");
-                                lowConfList.addAll(extractor.getLowConfContent());
-                                extractor.setLowConfContent(new CopyOnWriteArrayList<>());
-                            }
+                        // 1st data
+                        try {
+                            pdfList.add(extractor.processData1(extractor));
+                        } catch (Exception e) {
+                            JOptionPane.showMessageDialog(null, "Error extracting data." +"\nError:"+ e, "Error", JOptionPane.ERROR_MESSAGE);
                         }
-                        pdfList.add(extractor.processData1(extractor));
                         fileTypeList.add(fileType);
                         if (extractor.getLowConfContent().size() > 0) {
                             lowConfList.add("-------------------\n" + pdfName + "\n");
                             lowConfList.addAll(extractor.getLowConfContent());
+                            // reset the lowConfContent list to avoid duplication
+                            extractor.setLowConfContent(new CopyOnWriteArrayList<>());
                         }
+
+                        // Check if the PDF contains multiple files
+                        if (extractor.isMultipleFiles()) {
+                            try {
+                                pdfList.add(extractor.processData2(extractor));
+                            } catch (Exception e) {
+                                JOptionPane.showMessageDialog(null, "Error extracting data." +"\nError:"+ e, "Error", JOptionPane.ERROR_MESSAGE);
+                            }
+                            fileTypeList.add("N/A");
+                            if (extractor.getLowConfContent().size() > 0) {
+                                lowConfList.add("-------------------\n" + pdfName + "\n");
+                                lowConfList.addAll(extractor.getLowConfContent());
+                            }
+                        }
+
                     });
 
-                    treeBuilder.buildTreeFromPDF(pdfList, fileTypeList);
-                    writer.writeToExcel(sheet, treeBuilder);
+                    try {
+                        treeBuilder.buildTreeFromPDF(pdfList, fileTypeList);
+                    } catch (Exception e) {
+                        JOptionPane.showMessageDialog(null, "Error Writing data to Tree." +"\nError:"+ e, "Error", JOptionPane.ERROR_MESSAGE);
+
+                    }
+                    // clean memory
+                    pdfList.clear();
+                    System.gc();
+
+                    try {
+                        writer.writeToExcel(sheet, treeBuilder);
+                    } catch (Exception e) {
+                        JOptionPane.showMessageDialog(null, "Error Writing data to Excel." +"\nError:"+ e, "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                    treeBuilder = null;
 
                     if (lowConfList.size() > 0) {
                         String lowConfFilePath = finalFileToSave.getParent() + "/LowConfContent.txt";
@@ -249,16 +273,20 @@ public class PdfSelectorGUI extends JFrame {
                         workbook.write(out);
                         if (lowConfList.size() > 0) {
                             JOptionPane.showMessageDialog(null, "Excel file saved! However, " +
-                                    "there are low confidence content in the PDFs. Please check the LowConfContent.txt file for details.");
+                                    "there are low confidence contents in the PDFs. Please check the LowConfContent.txt file for details.");
                         } else {
                             JOptionPane.showMessageDialog(null, "Excel file saved: " + finalFileToSave.getAbsolutePath());
                         }
 
                     } catch (IOException e) {
-                        JOptionPane.showMessageDialog(null, "Error writing to Excel file.", "Error", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(null, "Error writing to Excel file, please close the Excel file and retry.", "Error", JOptionPane.ERROR_MESSAGE);
                     } finally {
                         try {
                             workbook.close();
+                            // clean memory
+                            fileTypeList.clear();
+                            lowConfList.clear();
+                            System.gc();
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -269,6 +297,7 @@ public class PdfSelectorGUI extends JFrame {
                 @Override
                 protected void done() {
                     progressDialog.closeDialog();
+
                 }
             };
             worker.execute();
@@ -326,24 +355,12 @@ public class PdfSelectorGUI extends JFrame {
             tableModel.removeRow(selectedRows[i]); // Remove the row from the table model
         }
     }
-
     private void saveLastSelectedDirectory(int mode) {
         Properties prop = new Properties();
         try (OutputStream output = new FileOutputStream("config.properties")) {
-            switch (mode) {
-                case 0 -> { // PDF
-                    if (lastPdfDirectory != null) {
-                        prop.setProperty("lastPdfDirectory", lastPdfDirectory.getAbsolutePath());
-                        prop.store(output, null);
-                    }
-                }
-                case 1 -> { // Excel
-                    if (lastExcelDirectory != null) {
-                        prop.setProperty("lastExcelDirectory", lastExcelDirectory.getAbsolutePath());
-                        prop.store(output, null);
-                    }
-                }
-            }
+            if (lastPdfDirectory != null) prop.setProperty("lastPdfDirectory", lastPdfDirectory.getAbsolutePath());
+            if (lastExcelDirectory != null) prop.setProperty("lastExcelDirectory", lastExcelDirectory.getAbsolutePath());
+            prop.store(output, null);
 
         } catch (IOException io) {
             io.printStackTrace();
@@ -367,8 +384,7 @@ public class PdfSelectorGUI extends JFrame {
                     }
                 }
             }
-        } catch (IOException ex) {
-            ex.printStackTrace();
+        } catch (IOException ignored) {
         }
     }
 

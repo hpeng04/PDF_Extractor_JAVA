@@ -1,23 +1,16 @@
 package readers;
 
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.TesseractException;
 import net.sourceforge.tess4j.Word;
 
-import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class PdfReader extends Reader {
     private final int TEXT_LINE = 2;
@@ -46,7 +39,9 @@ public class PdfReader extends Reader {
             throw new RuntimeException(e);
         }
 
+
         this.pagesWithInfo = resultsWithDetail;
+
     }
     public ConcurrentHashMap<Integer, List<Word>> getPagesWithInfo() {
         return this.pagesWithInfo;

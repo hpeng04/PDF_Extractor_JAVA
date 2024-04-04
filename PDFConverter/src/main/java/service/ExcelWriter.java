@@ -1,12 +1,8 @@
 package service;
 
-import model.PdfData;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import util.TreeNode;
-
-import java.io.*;
 
 public class ExcelWriter {
     private final int START_ROW = 2; // row 3
@@ -15,7 +11,7 @@ public class ExcelWriter {
     private int currRow;
     private int currCol;
 
-    public boolean writeToExcel(Sheet sheet, TreeBuilder treeBuilder){
+    public void writeToExcel(Sheet sheet, TreeBuilder treeBuilder) throws Exception {
 
         for (TreeNode<Object> parentTitle : treeBuilder.getTree().getChildren()) {
             // write the parent title at row 3
@@ -26,7 +22,6 @@ public class ExcelWriter {
             if (parentTitle.getChildren() != null) {
                 for (TreeNode<Object> childTitle : parentTitle.getChildren()) {
                     int currRow = START_ROW + 1;
-                    int currFileIndex = 0;
                     // write the child title at the next row
                     row = sheet.getRow(currRow) == null ? sheet.createRow(currRow) : sheet.getRow(currRow);
                     cell = row.createCell(currCol);
@@ -51,7 +46,6 @@ public class ExcelWriter {
 
         }
 
-        return true;
     }
 
     public void writeBasic(Workbook workbook) {

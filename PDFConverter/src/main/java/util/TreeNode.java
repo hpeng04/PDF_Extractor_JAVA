@@ -1,5 +1,8 @@
 package util;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class TreeNode<T> {
     private T data;
     private TreeNode<T> parent;
@@ -114,6 +117,20 @@ public class TreeNode<T> {
         this.children = null;
     }
 
+    public void removeChild(T data) {
+        if (this.children != null) {
+            for (int i = 0; i < this.children.length; i++) {
+                if (this.children[i].getData().equals(data)) {
+                    TreeNode<T>[] temp = this.children;
+                    this.children = new TreeNode[temp.length - 1];
+                    System.arraycopy(temp, 0, this.children, 0, i);
+                    System.arraycopy(temp, i + 1, this.children, i, temp.length - i - 1);
+                    return;
+                }
+            }
+        }
+    }
+
     public void removeLastChild() {
         if (this.children != null) {
             TreeNode<T>[] temp = this.children;
@@ -154,6 +171,23 @@ public class TreeNode<T> {
         } else if (this.children != null) {
             for (TreeNode<T> node : this.children) {
                 if (node.containsTitle(data)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean containsPartialTitle(T data) {
+        if (this.equals(null)) return false;
+        String str1 = this.data.toString().toLowerCase();
+        String str2 = data.toString().toLowerCase();
+        Matcher matcher = Pattern.compile("^" + str2).matcher(str1);
+        if (this.isTitle && matcher.find()) {
+            return true;
+        } else if (this.children != null) {
+            for (TreeNode<T> node : this.children) {
+                if (node.containsPartialTitle(data)) {
                     return true;
                 }
             }

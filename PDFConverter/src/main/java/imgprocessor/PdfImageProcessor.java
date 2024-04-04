@@ -1,16 +1,14 @@
 package imgprocessor;
-import org.apache.pdfbox.pdmodel.PDDocument;
+
 import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
 
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.*;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class PdfImageProcessor {
 
@@ -28,41 +26,6 @@ public class PdfImageProcessor {
         return cachedImages;
     }
 
-//    public static Map<Integer, BufferedImage> convert(String filePath){
-//        Map<Integer, BufferedImage> cachedImages = new HashMap<>();
-//        ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-//
-//        try (PDDocument document = Loader.loadPDF(new File(filePath))) {
-//            PDFRenderer pdfRenderer = new PDFRenderer(document);
-//            // List to hold Future objects representing the tasks
-//            Map<Integer, Future<BufferedImage>> futures = new HashMap<>();
-//
-//            for (int page = 0; page < document.getNumberOfPages(); page++) {
-//                final int pageNumber = page;
-//                // Submit a callable task for each page to be rendered and cropped
-//                futures.put(pageNumber, executor.submit(() -> cropPage(pdfRenderer, pageNumber)));
-//            }
-//
-//            // Wait for all tasks to complete and collect the results
-//            for (Map.Entry<Integer, Future<BufferedImage>> entry : futures.entrySet()) {
-//                cachedImages.put(entry.getKey(), entry.getValue().get());
-//            }
-//        } catch (IOException | InterruptedException | ExecutionException e) {
-//            throw new RuntimeException(e);
-//        } finally {
-//            // Shutdown the executor and wait for any running tasks to finish
-//            executor.shutdown();
-//            try {
-//                if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
-//                    executor.shutdownNow();
-//                }
-//            } catch (InterruptedException ie) {
-//                executor.shutdownNow();
-//                Thread.currentThread().interrupt();
-//            }
-//        }
-//        return cachedImages;
-//    }
     public static Map<Integer, BufferedImage> convert(File file) throws IOException {
         Map<Integer, BufferedImage> cachedImages = new HashMap<>();
 
@@ -87,53 +50,6 @@ public class PdfImageProcessor {
 
         return image.getSubimage(0, top, width, bottom - top);
     }
-
-//    public static void main(String[] args) {
-//
-//        String filePath = "C:\\Users\\45799\\Desktop\\py\\pdfReader\\PDFs\\Home 1 PR.pdf"; // Update this path
-//
-//        String outputDir = "C:\\Users\\45799\\Desktop\\py\\pdfReader\\java_outs"; // Update this path
-//
-//        long startTime = System.nanoTime();
-//        try {
-//
-//            Map<Integer, BufferedImage> map = convert(filePath);
-//            System.out.println(map.size());
-//            saveImages(map, outputDir);
-//
-//        } catch (IOException e) {
-//
-//            e.printStackTrace();
-//
-//        }
-//
-//        long endTime = System.nanoTime();
-//
-//        long duration = (endTime - startTime);  // Calculate the duration in nanoseconds
-//
-//        System.out.println("Execution time: " + duration / 1_000_000 + " milliseconds");
-//    }
-
-//    public static void saveImages(Map<Integer, BufferedImage> images, String outputPath) {
-//        // Ensure the output directory exists
-//        File directory = new File(outputPath);
-//        if (!directory.exists()) {
-//            directory.mkdirs();
-//        }
-//
-//        // Iterate through the map and save each image
-//        for (Map.Entry<Integer, BufferedImage> entry : images.entrySet()) {
-//            Integer pageNumber = entry.getKey();
-//            BufferedImage image = entry.getValue();
-//            File outputFile = new File(directory, pageNumber + ".png");
-//            try {
-//                ImageIO.write(image, "PNG", outputFile);
-//                System.out.println("Saved image: " + outputFile.getAbsolutePath());
-//            } catch (IOException e) {
-//                System.err.println("Error saving image for page " + pageNumber + ": " + e.getMessage());
-//            }
-//        }
-//    }
 
 }
 

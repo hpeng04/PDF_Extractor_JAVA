@@ -87,17 +87,15 @@ public class readerTest {
 
     @Test
     public void matcherTest(){
-        String line = "Design Heat Loss* at -30.0 °C (22.19 \n" +
-                "Watts / m3):\n" +
-                "11415 Watts";
-        Pattern valuePattern = Pattern.compile("(\\d+)(\\s?)(BTU/h|Watts)");
-        Matcher valueMatcher = valuePattern.matcher(line);
+        String str1 = "Southeast Windows";
+        String str2 = "east Windows";
+        Matcher matcher = Pattern.compile("^" + str2).matcher(str1);
 
-        while (valueMatcher.find()) {
-            System.out.println("Found value: " + valueMatcher.group(1));
+        if (matcher.find()) {
+            System.out.println("Matched");
+        } else {
+            System.out.println("Not Matched");
         }
-
-
     }
 
     @Test

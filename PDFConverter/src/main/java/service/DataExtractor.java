@@ -81,6 +81,9 @@ public class DataExtractor {
             }
         }
 
+        // Clear the images from memory
+        imgs = null;
+
         if (this.MultipleFiles) {
             for (int i = this.secondFileStartPage; i < pagesWithInfo.size(); i++) {
                 List<Word> words = pagesWithInfo.get(i);
@@ -103,6 +106,9 @@ public class DataExtractor {
             }
         }
 
+        // clean pagesWithInfo from memory
+        pagesWithInfo = null;
+
         for (int i = this.content1.size() - 1; i >= 0; i--) {
             String s = this.content1.get(i);
             if (s.contains("MONTHLY ESTIMATED ENERGY CONSUMPTION BY DEVICE")) {
@@ -114,11 +120,11 @@ public class DataExtractor {
         }
     }
 
-    public PdfData processData1(DataExtractor extractor) {
+    public PdfData processData1(DataExtractor extractor) throws Exception{
         return processData(extractor.getContent1(), this.content1_confidence);
     }
 
-    public PdfData processData2(DataExtractor extractor) {
+    public PdfData processData2(DataExtractor extractor) throws Exception{
         return processData(extractor.getContent2(), this.content2_confidence);
     }
 
@@ -127,7 +133,7 @@ public class DataExtractor {
 
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
-        StringBuffer occupants = new StringBuffer();
+        HashMap<String, String> occupants = new HashMap<>();
 
         for (Fields field : Fields.values()) {
             executor.submit(() -> {
@@ -149,12 +155,13 @@ public class DataExtractor {
                             }
                             data.setFile(sb.toString());
                         }
+                        case OCCUPANTS -> {}
                         case ADULTS, CHILDREN, INFANTS-> {
                             for (String line : content) {
                                 if (line.contains(field.getKeyword())) {
                                     String s = line.replace("Occupants :", "")
-                                            .replace("\n", "").stripLeading() + "; ";
-                                    occupants.append(s);
+                                            .replace("\n", "").stripLeading();
+                                    occupants.put(String.valueOf(field), s + "; ");
                                     break;
                                 }
                             }
@@ -186,7 +193,7 @@ public class DataExtractor {
                         case TEMP_RISE_FROM -> {
                             for (int i = 0; i < content.size(); i++) {
                                 String line = content.get(i);
-                                Pattern temp = Pattern.compile("\\d+(\\.\\d+?)");
+                                Pattern temp = Pattern.compile("\\d+(\\.\\d+?)?");
                                 if (line.contains(field.getKeyword())) {
                                     Matcher matcher = temp.matcher(line);
                                     if (content_confidence.get(i) < confThreshold) lowConfContent.add(field.getTitle());
@@ -196,9 +203,11 @@ public class DataExtractor {
                                         for (int j = parts.length - 1; j >= 0; j--) {
                                             Matcher tempMatcher = temp.matcher(parts[j]);
                                             if (tempMatcher.find()) {
-                                                float value = isSIUnit() ?
+                                                float v = tempMatcher.group().contains(".") ?
                                                         Float.parseFloat(tempMatcher.group()) :
-                                                        Conversions.convert(TEMPERATURE,  Float.parseFloat(tempMatcher.group()));
+                                                        Float.parseFloat(tempMatcher.group()) / 10f;
+                                                float value = isSIUnit() ?
+                                                        v : Conversions.convert(TEMPERATURE,  v);
                                                 data.setTempRiseFrom(String.format("%.1f", value));
                                                 break;
                                             }
@@ -213,7 +222,7 @@ public class DataExtractor {
                             boolean foundSectionStart = false;
                             String currentOrientation = null;
                             Pattern valuePattern = Pattern.compile("\\d+(\\.\\d+)?\\s\\d+(\\.\\d+)?");
-                            Pattern orientationPattern = Pattern.compile("^(South|East|West|North|SouthEast|NorthEast|NorthWest|SouthWest)(\n)?$");
+                            Pattern orientationPattern = Pattern.compile("^(South|East|West|North|Southeast|Northeast|Northwest|Southwest)(\n)?$");
 
                             for (int i = 0; i < content.size(); i++) {
                                 String line = content.get(i);
@@ -235,7 +244,7 @@ public class DataExtractor {
                                         if (valueMatcher.find()) {
                                             Pattern numPattern = Pattern.compile("\\d+");
                                             String[] parts = line.split("\\s");
-                                            if (parts.length < 2) continue;
+                                            if (parts.length < 5) continue;
 
                                             int length = parts.length - 1;
 
@@ -267,6 +276,8 @@ public class DataExtractor {
                                 }
                             }
                             data.setWindowCharacteristics(windowCharacteristics);
+                            // clean memory
+                            windowCharacteristics = null;
                         }
                         case ABOVE_GRADE_FRACTION -> {
                             for (int i = 0; i < content.size(); i++) {
@@ -287,6 +298,8 @@ public class DataExtractor {
                             Pattern pattern = Pattern.compile("\\d+(\\.\\d+)?\\s\\d+(\\.\\d+)?");
                             List<List<String>> value = extractTableComponents(content, content_confidence, start, end, pattern);
                             data.setCeilingComponents(value);
+                            // clean memory
+                            value = null;
                         }
                         case MAIN_WALL_COMPONENTS -> {
                             String start = "MAIN WALL COMPONENTS";
@@ -294,6 +307,8 @@ public class DataExtractor {
                             Pattern pattern = Pattern.compile("\\d+(\\.\\d+)?\\s\\d+(\\.\\d+)?");
                             List<List<String>> value = extractTableComponents(content, content_confidence, start, end, pattern);
                             data.setMainWallComponents(value);
+                            // clean memory
+                            value = null;
                         }
                         case EXPOSED_FLOORS -> {
                             String start = "EXPOSED FLOORS";
@@ -301,6 +316,8 @@ public class DataExtractor {
                             Pattern pattern = Pattern.compile("\\d+(\\.\\d+)?\\s(\\d+(\\.\\d+)?|>)");
                             List<List<String>> value = extractTableComponents(content, content_confidence, start, end, pattern);
                             data.setExposedFloors(value);
+                            // clean memory
+                            value = null;
                         }
                         case DOORS -> {
                             String start = "DOORS";
@@ -308,29 +325,38 @@ public class DataExtractor {
                             Pattern pattern = Pattern.compile("\\d+(\\.\\d+)?\\s\\d+(\\.\\d+)?");
                             List<List<String>> value = extractTableComponents(content, content_confidence, start, end, pattern);
                             data.setDoors(value);
+                            // clean memory
+                            value = null;
                         }
                         case INTERIOR_WALL -> {
                             for (int i = 0; i < content.size(); i++) {
                                 String line = content.get(i);
                                 if (line.contains(field.getKeyword())) {
                                     if (content_confidence.get(i) < confThreshold) lowConfContent.add(field.getTitle() + " R-Value");
-                                    Pattern rsiPattern = Pattern.compile("\\d+(\\.\\d+)?");
                                     Pattern typePattern = Pattern.compile("type:(.*?)R-(value|Value)");
                                     Matcher typeMatcher = typePattern.matcher(line);
-                                    Matcher rsiMatcher = rsiPattern.matcher(line);
-                                    if (rsiMatcher.find()) {
-                                        Matcher decimalMatcher = Pattern.compile("\\d+\\.\\d{2}").matcher(rsiMatcher.group());
-                                        float originalRSI = decimalMatcher.find() ?
-                                                Float.parseFloat(rsiMatcher.group()) :
-                                                Float.parseFloat(rsiMatcher.group()) / 100f;
-                                        float rsi = isSIUnit() ?
-                                                originalRSI :
-                                                Conversions.convert(THERMAL_RESISTANCE,  originalRSI);
-                                        data.setInteriorWallRValue(String.format("%.2f", rsi));
-                                    }
                                     if (typeMatcher.find()) {
                                         data.setInteriorWallType(typeMatcher.group(1));
                                     }
+                                    String[] parts = line.split("\\s");
+                                    for (int j = parts.length - 1; j >= 0; j--) {
+                                        Pattern rsiPattern = Pattern.compile("\\d+(\\.\\d+)?");
+                                        Matcher rsiMatcher = rsiPattern.matcher(parts[j]);
+
+                                        if (rsiMatcher.find()) {
+                                            Matcher decimalMatcher = Pattern.compile("\\d+\\.\\d{2}").matcher(rsiMatcher.group());
+                                            float originalRSI = decimalMatcher.find() ?
+                                                    Float.parseFloat(rsiMatcher.group()) :
+                                                    Float.parseFloat(rsiMatcher.group()) / 100f;
+                                            float rsi = isSIUnit() ?
+                                                    originalRSI :
+                                                    Conversions.convert(THERMAL_RESISTANCE,  originalRSI);
+                                            data.setInteriorWallRValue(String.format("%.2f", rsi));
+                                            break;
+                                        }
+                                    }
+                                    break;
+
                                 }
                             }
                         }
@@ -339,23 +365,30 @@ public class DataExtractor {
                                 String line = content.get(i);
                                 if (line.contains(field.getKeyword())) {
                                     if (content_confidence.get(i) < confThreshold) lowConfContent.add(field.getTitle() + " R-Value");
-                                    Pattern rsiPattern = Pattern.compile("\\d+(\\.\\d+)?");
                                     Pattern typePattern = Pattern.compile("type:(.*?)R-(value|Value)");
                                     Matcher typeMatcher = typePattern.matcher(line);
-                                    Matcher rsiMatcher = rsiPattern.matcher(line);
-                                    if (rsiMatcher.find()) {
-                                        Matcher decimalMatcher = Pattern.compile("\\d+\\.\\d{2}").matcher(rsiMatcher.group());
-                                        float originalRSI = decimalMatcher.find() ?
-                                                Float.parseFloat(rsiMatcher.group()) :
-                                                Float.parseFloat(rsiMatcher.group()) / 100f;
-                                        float rsi = isSIUnit() ?
-                                                originalRSI :
-                                                Conversions.convert(THERMAL_RESISTANCE,  originalRSI);
-                                        data.setExteriorWallRValue(String.format("%.2f", rsi));
-                                    }
                                     if (typeMatcher.find()) {
                                         data.setExteriorWallType(typeMatcher.group(1));
                                     }
+                                    // R-VALUE
+                                    String[] parts = line.split("\\s");
+                                    for (int j = parts.length - 1; j >= 0; j--) {
+                                        Pattern rsiPattern = Pattern.compile("\\d+(\\.\\d+)?");
+                                        Matcher rsiMatcher = rsiPattern.matcher(parts[j]);
+
+                                        if (rsiMatcher.find()) {
+                                            Matcher decimalMatcher = Pattern.compile("\\d+\\.\\d{2}").matcher(rsiMatcher.group());
+                                            float originalRSI = decimalMatcher.find() ?
+                                                    Float.parseFloat(rsiMatcher.group()) :
+                                                    Float.parseFloat(rsiMatcher.group()) / 100f;
+                                            float rsi = isSIUnit() ?
+                                                    originalRSI :
+                                                    Conversions.convert(THERMAL_RESISTANCE,  originalRSI);
+                                            data.setExteriorWallRValue(String.format("%.2f", rsi));
+                                            break;
+                                        }
+                                    }
+                                    break;
                                 }
                             }
                         }
@@ -437,6 +470,8 @@ public class DataExtractor {
                                 }
                             }
                             data.setBuildingAssemblyDetails(buildingAssemblyDetails);
+                            // clean memory
+                            buildingAssemblyDetails = null;
                         }
                         case BUILDING_PARAMETERS_ZONE_1 -> {
                             String start = "ZONE 1 : Above Grade";
@@ -445,6 +480,8 @@ public class DataExtractor {
                             HashMap<String, List<String>> buildingParametersZone = extractBuildingParameters(content, content_confidence, start, end, pattern);
 
                             data.setBuildingParametersZone1(buildingParametersZone);
+                            // clean memory
+                            buildingParametersZone = null;
                         }
                         case BUILDING_PARAMETERS_ZONE_2 -> {
                             String start = "ZONE 2 : Basement";
@@ -453,6 +490,8 @@ public class DataExtractor {
                             HashMap<String, List<String>> buildingParametersZone = extractBuildingParameters(content, content_confidence, start, end, pattern);
 
                             data.setBuildingParametersZone2(buildingParametersZone);
+                            // clean memory
+                            buildingParametersZone = null;
                         }
                         case AIR_LEAKAGE_MECHANICAL_VENTILATION -> {
                             boolean foundSectionStart = false;
@@ -484,7 +523,7 @@ public class DataExtractor {
                             }
                         }
                         case VENTILATION_REQUIREMENTS -> {
-                            HashMap<String, String> roomInfo = new HashMap<>();
+                            LinkedHashMap<String, String> roomInfo = new LinkedHashMap<>();
                             boolean foundSectionStart = false;
 
                             for (int i = 0; i < content.size(); i++) {
@@ -534,14 +573,28 @@ public class DataExtractor {
                                 }
                             }
                             data.setVentilationRequirements(roomInfo);
+                            // clean memory
+                            roomInfo = null;
                         }
-                        case FP_POWER_0, FP_POWER_MINUS_25 -> {
+                        case FP_POWER_0 -> {
                             Pattern pattern = Pattern.compile("\\d+(\\.\\d+)?\\s?(Watts|watts)");
-                            findPowerAndEfficiency(content, content_confidence, field, data, pattern);
+                            String keywordImperial = "Fan and Preheater Power at 32";
+                            findPowerAndEfficiency(content, content_confidence, field, keywordImperial, data, pattern);
                         }
-                        case HEAT_RE_EFFICIENCY_0, HEAT_RE_EFFICIENCY_MINUS_25 -> {
+                        case FP_POWER_MINUS_25 -> {
+                            Pattern pattern = Pattern.compile("\\d+(\\.\\d+)?\\s?(Watts|watts)");
+                            String keywordImperial = "Fan and Preheater Power at -13";
+                            findPowerAndEfficiency(content, content_confidence, field, keywordImperial, data, pattern);
+                        }
+                        case HEAT_RE_EFFICIENCY_0 -> {
                             Pattern pattern = Pattern.compile("\\d+(\\.\\d+)?\\s?%");
-                            findPowerAndEfficiency(content, content_confidence, field, data, pattern);
+                            String keywordImperial = "Sensible Heat Recovery Efficiency at 32";
+                            findPowerAndEfficiency(content, content_confidence, field, keywordImperial, data, pattern);
+                        }
+                        case HEAT_RE_EFFICIENCY_MINUS_25 -> {
+                            Pattern pattern = Pattern.compile("\\d+(\\.\\d+)?\\s?%");
+                            String keywordImperial = "Fan and Preheater Power at -";
+                            findPowerAndEfficiency(content, content_confidence, field, keywordImperial, data, pattern);
                         }
                         case EST_VENT_LOAD_HEATING -> {
                             String k1 = "Heating Hours:";
@@ -557,7 +610,7 @@ public class DataExtractor {
                                 PRIMARY_DOMESTIC_WATER_HEATING_LOAD_CONSUMPTION, GROSS_SPACE_HEAT_LOSS,
                                 GROSS_SPACE_HEATING_LOAD, USABLE_INTERNAL_GAINS, USABLE_SOLAR_GAINS,
                                 AUXILARY_ENERGY_REQUIRED, SPACE_HEATING_SYSTEM_LOAD,
-                                FURNACE_BOILER_ANNUAL_ENERGY_CONSUMPTION-> {
+                                FURNACE_BOILER_ANNUAL_ENERGY_CONSUMPTION, HEAT_PUMP_ANN_ENERGY_CONSUMPTION-> {
                             for (int i = 0; i < content.size(); i++) {
                                 String line = content.get(i);
                                 if (line.contains(field.getKeyword())) {
@@ -581,6 +634,24 @@ public class DataExtractor {
                                 }
                             }
 
+                        }
+                        case ANNUAL_SPACE_HETING_ENERGY -> {
+                            Pattern pattern = Pattern.compile("^Annual Space Heating Energy");
+                            for (int i = 0; i < content.size(); i++) {
+                                String line = content.get(i);
+                                if (pattern.matcher(line).find()) {
+                                    if (content_confidence.get(i) < confThreshold) lowConfContent.add(field.getTitle());
+                                    Pattern valuePattern = Pattern.compile("\\d+(\\.\\d+)?");
+                                    Matcher valueMatcher = valuePattern.matcher(line);
+                                    if (valueMatcher.find()) {
+                                        float value = isSIUnit() ?
+                                                Float.parseFloat(valueMatcher.group()) :
+                                                Conversions.convert(ENERGY,  Float.parseFloat(valueMatcher.group()));
+                                        data.setAnnualSpaceHeatingEnergyConsumption(String.format("%.3f", value));
+                                        break;
+                                    }
+                                }
+                            }
                         }
                         case DAILY_HOT_WATER_CONSUMPTION -> {
                             for (int i = 0; i < content.size(); i++) {
@@ -621,22 +692,26 @@ public class DataExtractor {
                                 String line = content.get(i);
                                 if (line.contains(field.getKeyword())) {
                                     if (content_confidence.get(i) < confThreshold) lowConfContent.add(field.getTitle());
-                                    Pattern pattern = Pattern.compile("(\\d+)(\\s?)(BTU/h|Watts)");
-                                    Matcher matcher = pattern.matcher(line);
-                                    if (matcher.find()) {
-                                        int value = isSIUnit() ?
-                                                Integer.parseInt(matcher.group(1)) :
-                                                (int) Conversions.convert(ENERGY,  Float.parseFloat(matcher.group(1)));
-                                        try {
-                                            String fieldName = field.getFieldName().substring(0, 1).toUpperCase() + field.getFieldName().substring(1);
-                                            Method setter = PdfData.class.getMethod("set" + fieldName, String.class);
-                                            setter.invoke(data, String.valueOf(value));
-                                            break;
-                                        } catch (NoSuchMethodException | InvocationTargetException |
-                                                 IllegalAccessException e) {
-                                            break;
+                                    String[] parts = line.split("\\s");
+                                    Pattern pattern = Pattern.compile("\\d+");
+                                    for (int j = parts.length - 1; j >= 0; j--) {
+                                        Matcher matcher = pattern.matcher(parts[j]);
+                                        if (matcher.find()) {
+                                            float value = isSIUnit() ?
+                                                    Float.parseFloat(matcher.group()) :
+                                                    Conversions.convert(POWER, Float.parseFloat(matcher.group()));
+                                            try {
+                                                String fieldName = field.getFieldName().substring(0, 1).toUpperCase() + field.getFieldName().substring(1);
+                                                Method setter = PdfData.class.getMethod("set" + fieldName, String.class);
+                                                setter.invoke(data, String.format("%.1f", value));
+                                                break;
+                                            } catch (NoSuchMethodException | InvocationTargetException |
+                                                    IllegalAccessException e) {
+                                                break;
+                                            }
                                         }
                                     }
+                                    break;
                                 }
                             }
 
@@ -666,11 +741,54 @@ public class DataExtractor {
 
                                 String month = parts[0];
                                 try {
+                                    // check if OCR does not detect the decimal point,
+                                    // if the next part is a single digit, then combine the two parts
+                                    // if the next part is not a single digit, then the current part is a whole number
+                                    // SI unit contains 1 decimal place, imperial unit contains 3 decimal places
+                                    int decimalPlaces = isSIUnit() ? 1 : 3;
+                                    int i = 1;
+                                    float heatingLoadValue = Float.parseFloat(parts[i]);
+                                    if (!parts[i].contains(".")) {
+                                        // if current number does not contain a decimal point, then put it into lowConfContent,
+                                        // and check if the next number is a single digit, if so, assume the actual number is separated to two parts, (ie. 123 4)
+                                        // combine the two parts to get the actual number
+                                        // if not, assume the current number is a whole number, and divide it by 10^decimalPlaces (ie. 1234)
+                                        String original = parts[i];
+                                        if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
+                                            heatingLoadValue = Float.parseFloat((parts[i] + "." + parts[i+1]));
+                                            i++;
+                                        } else {
+                                            heatingLoadValue /= Math.pow(10, decimalPlaces);
+                                        }
+                                        lowConfContent.add(field.getTitle() + " " + month + " Heating Load: OCRed=" + original + " -> predicted=" + heatingLoadValue);
+                                    }
+                                    i++;
                                     float heatingLoad = isSIUnit() ?
-                                            Float.parseFloat(parts[1]) : Conversions.convert(ENERGY, Float.parseFloat(parts[1]));
+                                            heatingLoadValue : Conversions.convert(ENERGY, heatingLoadValue);
+
+                                    float furnaceValue = Float.parseFloat(parts[i]);
+                                    if (!parts[i].contains(".")) {
+                                        String original = parts[i];
+                                        if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
+                                            furnaceValue = Float.parseFloat((parts[i] + "." + parts[i+1]));
+                                        } else {
+                                            furnaceValue /= Math.pow(10, decimalPlaces);
+                                        }
+                                        lowConfContent.add(field.getTitle() + " " + month + " Furnace Input: OCRed=" + original + " -> predicted=" + furnaceValue);
+                                    }
                                     float furnaceInput = isSIUnit() ?
-                                            Float.parseFloat(parts[2]) : Conversions.convert(ENERGY, Float.parseFloat(parts[2]));
+                                            furnaceValue : Conversions.convert(ENERGY, furnaceValue);
+
                                     float COP = Float.parseFloat(parts[parts.length - 1]);
+                                    if (!parts[parts.length - 1].contains(".")) {
+                                        String original = parts[parts.length - 1];
+                                        if (!parts[parts.length - 2].contains(".") && parts[parts.length - 1].length() == decimalPlaces) {
+                                            COP = Float.parseFloat(parts[parts.length - 2] + "." + parts[parts.length - 1]);
+                                        } else {
+                                            COP /= Math.pow(10, decimalPlaces);
+                                        }
+                                        lowConfContent.add(field.getTitle() + " " + month + " COP: OCRed=" + original + " -> predicted=" + COP);
+                                    }
 
                                     List<String> values = List.of(String.format("%.1f", heatingLoad),
                                             String.format("%.1f", furnaceInput), String.format("%.3f", COP));
@@ -678,8 +796,12 @@ public class DataExtractor {
                                 } catch (NumberFormatException e) {
                                     System.err.println("Error parsing numbers from line: " + line);
                                 }
+                                if (month.equals("Ann")) break;
                             }
                             data.setSpaceHeatingSystemPerformance(monthlyData);
+                            // clean memory
+                            list = null;
+                            monthlyData = null;
                         }
                         case MONTHLY_ESTIMATED_ENERGY_CONSUMPTION_BY_DEVICE -> {
                             String end = "MONTHLY ESTIMATED ENERGY CONSUMPTION BY DEVICE";
@@ -694,34 +816,153 @@ public class DataExtractor {
 
                                 String month = parts[0];
                                 try {
+                                    // check if OCR does not detect the decimal point,
+                                    // if the next part is a single digit, then combine the two parts
+                                    // if the next part is not a single digit, then the current part is a whole number
+                                    // SI unit contains 1 decimal place, imperial unit contains 3 decimal places
+                                    int decimalPlaces = isSIUnit() ? 1 : 3;
+                                    int i = 1;
+                                    float value1 = Float.parseFloat(parts[i]);
+                                    if (!parts[i].contains(".")) {
+                                        // if current number does not contain a decimal point, then put it into lowConfContent,
+                                        // and check if the next number is a single digit, if so, assume the actual number is separated to two parts, (ie. 123 4)
+                                        // combine the two parts to get the actual number
+                                        // if not, assume the current number is a whole number, and divide it by 10^decimalPlaces (ie. 1234)
+                                        String original = parts[i];
+                                        if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
+                                            value1 = Float.parseFloat((parts[i] + "." + parts[i+1]));
+                                            i++;
+                                        } else {
+                                            value1 /= Math.pow(10, decimalPlaces);
+                                        }
+                                        lowConfContent.add(field.getTitle() + " " + month + " Space Heating Primary: OCRed=" + original + " -> predicted=" + value1);
+                                    }
+                                    i++;
                                     float spaceHeatingPrimary = isSIUnit() ?
-                                            Float.parseFloat(parts[1]) : Conversions.convert(ENERGY, Float.parseFloat(parts[1]));
+                                            value1 : Conversions.convert(ENERGY, value1);
+
+                                    float value2 = Float.parseFloat(parts[i]);
+                                    if (!parts[i].contains(".")) {
+                                        String original = parts[i];
+                                        if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
+                                            value2 = Float.parseFloat((parts[i] + "." + parts[i+1]));
+                                            i++;
+                                        } else {
+                                            value2 /= Math.pow(10, decimalPlaces);
+                                        }
+                                        lowConfContent.add(field.getTitle() + " " + month + " Space Heating Secondary: OCRed=" + original + " -> predicted=" + value2);
+                                    }
+                                    i++;
                                     float spaceHeatingSecondary = isSIUnit() ?
-                                            Float.parseFloat(parts[2]) : Conversions.convert(ENERGY, Float.parseFloat(parts[2]));
+                                            value2 : Conversions.convert(ENERGY, value2);
+
+                                    float value3 = Float.parseFloat(parts[i]);
+                                    if (!parts[i].contains(".")) {
+                                        String original = parts[i];
+                                        if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
+                                            value3 = Float.parseFloat((parts[i] + "." + parts[i+1]));
+                                            i++;
+                                        } else {
+                                            value3 /= Math.pow(10, decimalPlaces);
+                                        }
+                                        lowConfContent.add(field.getTitle() + " " + month + " DHW Primary: OCRed=" + original + " -> predicted=" + value3);
+                                    }
+                                    i++;
                                     float DHWPrimary = isSIUnit() ?
-                                            Float.parseFloat(parts[3]) : Conversions.convert(ENERGY, Float.parseFloat(parts[3]));
+                                            value3 : Conversions.convert(ENERGY, value3);
+
+                                    float value4 = Float.parseFloat(parts[i]);
+                                    if(!parts[i].contains(".")) {
+                                        String original = parts[i];
+                                        if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
+                                            value4 = Float.parseFloat((parts[i] + "." + parts[i+1]));
+                                            i++;
+                                        } else {
+                                            value4 /= Math.pow(10, decimalPlaces);
+                                        }
+                                        lowConfContent.add(field.getTitle() + " " + month + " DHW Secondary: OCRed=" + original + " -> predicted=" + value4);
+                                    }
+                                    i++;
                                     float DHWSecondary = isSIUnit() ?
-                                            Float.parseFloat(parts[4]) : Conversions.convert(ENERGY, Float.parseFloat(parts[4]));
+                                            value4 : Conversions.convert(ENERGY, value4);
+
+                                    float value5 = Float.parseFloat(parts[i]);
+                                    if (!parts[i].contains(".")) {
+                                        String original = parts[i];
+                                        if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
+                                            value5 = Float.parseFloat((parts[i] + "." + parts[i+1]));
+                                            i++;
+                                        } else {
+                                            value5 /= Math.pow(10, decimalPlaces);
+                                        }
+                                        lowConfContent.add(field.getTitle() + " " + month + " Lights: OCRed=" + original + " -> predicted=" + value5);
+                                    }
+                                    i++;
                                     float Lights = isSIUnit() ?
-                                            Float.parseFloat(parts[5]) : Conversions.convert(ENERGY, Float.parseFloat(parts[5]));
+                                            value5 : Conversions.convert(ENERGY, value5);
+
+                                    float value6 = Float.parseFloat(parts[i]);
+                                    if (!parts[i].contains(".")) {
+                                        String original = parts[i];
+                                        if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
+                                            value6 = Float.parseFloat((parts[i] + "." + parts[i+1]));
+                                            i++;
+                                        } else {
+                                            value6 /= Math.pow(10, decimalPlaces);
+                                        }
+                                        lowConfContent.add(field.getTitle() + " " + month + " HRV: OCRed=" + original + " -> predicted=" + value6);
+                                    }
+                                    i++;
                                     float hrv = isSIUnit() ?
-                                            Float.parseFloat(parts[6]) : Conversions.convert(ENERGY, Float.parseFloat(parts[6]));
+                                            value6 : Conversions.convert(ENERGY, value6);
+
+                                    float value7 = Float.parseFloat(parts[i]);
+                                    if (!parts[i].contains(".")) {
+                                        String original = parts[i];
+                                        if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
+                                            value7 = Float.parseFloat((parts[i] + "." + parts[i+1]));
+                                        } else {
+                                            value7 /= Math.pow(10, decimalPlaces);
+                                        }
+                                        lowConfContent.add(field.getTitle() + " " + month + " AC: OCRed=" + original + " -> predicted=" + value7);
+                                    }
                                     float ac = isSIUnit() ?
-                                            Float.parseFloat(parts[7]) : Conversions.convert(ENERGY, Float.parseFloat(parts[7]));
+                                            value7 : Conversions.convert(ENERGY, value7);
+
                                     List<String> values = List.of(String.format("%.1f", spaceHeatingPrimary), String.format("%.1f", spaceHeatingSecondary),
                                             String.format("%.1f", DHWPrimary), String.format("%.1f", DHWSecondary),
                                             String.format("%.1f", Lights), String.format("%.1f", hrv), String.format("%.1f", ac));
+
                                     monthlyData.put(month, values);
                                 } catch (NumberFormatException e) {
                                     System.err.println("Error parsing numbers from line: " + line);
                                 }
+                                if (month.equals("Ann")) break;
                             }
                             data.setMonthlyEstimatedEnergyConsumptionByDevice(monthlyData);
+                            // clean memory
+                            monthlyData = null;
+                            list = null;
+                        }
+                        case PRIMARY_HEATING_FUEL -> {
+                            for (int i = 0; i < content.size(); i++) {
+                                String line = content.get(i);
+                                Matcher matcher = Pattern.compile("PRIMARY Heating Fuel|PRIMARY Space Heating Fuel").matcher(line);
+                                if (matcher.find()) {
+                                    if (content_confidence.get(i) < confThreshold) lowConfContent.add(field.getTitle());
+                                    Matcher matcher1 = Pattern.compile("Heating Fuel:(.*)").matcher(line);
+                                    if (matcher1.find()) {
+                                        String value = matcher1.group(1).replace("\n", "").stripLeading();
+                                        data.setPrimaryHeatingFuel(value);
+                                        break;
+                                    }
+                                }
+                            }
                         }
                         /*
                         Nightime Setback, Air Leakage Test Results, System Type, Air Distribution/circulation type,
                         Air Distribution/circulation fan power, Operation schedule, Seasonal Heat Recovery Ventilator,
-                        PRIMARY Heating Fuel, AFUE, High Speed Fan Power, PRIMARY Water Heating, Energy Factor,
+                         AFUE, High Speed Fan Power, PRIMARY Water Heating, Energy Factor, Heat Pump and Furnace Annual COP,
                         Primary System Seasonal Efficiency, Usable Internal Gains Fraction, Usable Solar Gains Fraction,
                         Furnace/Boiler Seasonal efficiency
                          */
@@ -755,7 +996,7 @@ public class DataExtractor {
             e.printStackTrace();
         }
 
-        data.setOccupants(occupants.toString());
+        data.setOccupants(occupants);
         return data;
     }
 
@@ -774,7 +1015,6 @@ public class DataExtractor {
             if (inSection) {
                 Matcher matcher = pattern.matcher(line);
                 if (matcher.find()) {
-                    if (content_confidence.get(i) < confThreshold) lowConfContent.add(line);
                     list.add(0, line.replace("\n", ""));
                 }
             }
@@ -810,11 +1050,11 @@ public class DataExtractor {
         return String.valueOf(value);
     }
 
-    private void findPowerAndEfficiency(List<String> content, List<Float> content_confidence, Fields field, PdfData data, Pattern pattern) {
+    private void findPowerAndEfficiency(List<String> content, List<Float> content_confidence, Fields field, String keywordImperial, PdfData data, Pattern pattern) {
         for (int i = 0; i < content.size(); i++) {
             String line = content.get(i);
             if (line.contains("Page")) continue;
-            if (line.contains(field.getKeyword())) {
+            if (line.contains(field.getKeyword()) || line.contains(keywordImperial)) {
                 if (content_confidence.get(i) < confThreshold) lowConfContent.add(line);
                 Matcher matcher = pattern.matcher(line);
                 if (matcher.find()) {

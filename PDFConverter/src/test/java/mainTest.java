@@ -32,12 +32,20 @@ public class mainTest {
         PdfData pdfData = new PdfData();
         extractor.extractData(pdf);
         List<String> lowConfContent = extractor.getLowConfContent();
-        pdfData = extractor.processData1(extractor);
+        try {
+            pdfData = extractor.processData1(extractor);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         List<PdfData> list = new ArrayList<>();
         list.add(pdfData);
 
         TreeBuilder treeBuilder = new TreeBuilder();
-        treeBuilder.buildTreeFromPDF(list, Collections.singletonList("ref"));
+        try {
+            treeBuilder.buildTreeFromPDF(list, Collections.singletonList("ref"));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
 
         TreeNode<Object> tree = treeBuilder.getTree();
 //        pdfData.getFile();
@@ -65,26 +73,7 @@ public class mainTest {
 
     @Test
     public void allContentTest() throws TesseractException {
-//        String filePath = "C:\\Users\\45799\\Desktop\\py\\pdfReader\\PDFs\\example.pdf";
-//
-//
-//        File pdf = new File(filePath);
-//
-//        DataExtractor extractor = new DataExtractor();
-//        String c = extractor.extractContent(pdf);
-//        System.out.println(c);
-    }
-
-    @Test
-    public void test2() {
-//        String s = "Page 1 of 21";
-//        Pattern pattern = Pattern.compile("\\d{2}");
-//        Matcher matcher = pattern.matcher(s);
-//        if (matcher.find()) System.out.println(matcher.group());
-
-        String a = "absc";
-        int b = 1;
-        String c = a + b;
-        System.out.println(c);
+        float a = 1234;
+        System.out.println((double) (a/=Math.pow(10, 1)));
     }
 }

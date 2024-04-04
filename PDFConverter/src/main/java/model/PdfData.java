@@ -4,8 +4,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.TreeMap;
 
 @Getter @Setter
 public class PdfData {
@@ -14,7 +14,7 @@ public class PdfData {
     private String company;
     private String frontOrientation;
     private String yearHouseBuilt;
-    private String occupants;
+    private HashMap<String, String> occupants; // [Occupant, Age]
 
     private String daytimeSetpoint;
     private String nightimeSetpoint;
@@ -42,7 +42,7 @@ public class PdfData {
 
     private String airLeakageTestResult;
 
-    private HashMap<String, String> ventilationRequirements;
+    private LinkedHashMap<String, String> ventilationRequirements;
 
     private String systemType;
     private String fpPower0;
@@ -82,8 +82,11 @@ public class PdfData {
     private String usableSolarGainsFraction;
     private String auxilaryEnergyRequired;
     private String spaceHeatingSystemLoad;
+    private String heatPumpFurnaceAnnualCOP;
+    private String heatPumpAnnualEnergyConsumption;
     private String furnaceBoilerSeasonalEfficiency;
     private String furnaceBoilerAnnualEnergyConsumption;
+    private String annualSpaceHeatingEnergyConsumption;
 
     private String designHeatLoss;
     private String designCoolingLoad;
