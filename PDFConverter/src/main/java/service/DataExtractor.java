@@ -3,7 +3,7 @@ package service;
 import lombok.Setter;
 import model.Fields;
 import model.PdfData;
-import utils.Conversions;
+import utils.ConversionType;
 import lombok.Getter;
 import net.sourceforge.tess4j.TesseractException;
 import net.sourceforge.tess4j.Word;
@@ -19,7 +19,6 @@ import java.util.concurrent.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static utils.Conversions.*;
 import static imgprocessor.PdfImageProcessor.convert;
 
 public class DataExtractor {
@@ -179,7 +178,7 @@ public class DataExtractor {
                                             Method setter = PdfData.class.getMethod("set" + fieldName, String.class);
                                             float value = isSIUnit() ?
                                                     Float.parseFloat(matcher.group()) :
-                                                    Conversions.convert(TEMPERATURE,  Float.parseFloat(matcher.group()));
+                                                    ConversionType.TEMPERATURE.convert(Float.parseFloat(matcher.group()));
                                             setter.invoke(data, String.format("%.1f", value));
                                         } catch (NoSuchMethodException | InvocationTargetException |
                                                  IllegalAccessException e) {
@@ -207,7 +206,7 @@ public class DataExtractor {
                                                         Float.parseFloat(tempMatcher.group()) :
                                                         Float.parseFloat(tempMatcher.group()) / 10f;
                                                 float value = isSIUnit() ?
-                                                        v : Conversions.convert(TEMPERATURE,  v);
+                                                        v : ConversionType.TEMPERATURE.convert(v);
                                                 data.setTempRiseFrom(String.format("%.1f", value));
                                                 break;
                                             }
@@ -256,13 +255,13 @@ public class DataExtractor {
                                             length = numMatcher.find() ? length - 1 : length - 2;
                                             float rsi = isSIUnit() ?
                                                     Float.parseFloat(parts[length]) :
-                                                    Conversions.convert(THERMAL_RESISTANCE, Float.parseFloat(parts[length]));
+                                                    ConversionType.THERMAL_RESISTANCE.convert(Float.parseFloat(parts[length]));
 
                                             numMatcher = numPattern.matcher(parts[length - 1]);
                                             length = numMatcher.find() ? length - 1 : length - 2;
                                             float area = isSIUnit() ?
                                                     Float.parseFloat(parts[length]) :
-                                                    Conversions.convert(AREA, Float.parseFloat(parts[length]));
+                                                    ConversionType.AREA.convert(Float.parseFloat(parts[length]));
                                             dataLine.add(String.format("%.2f", area));
                                             dataLine.add(String.format("%.3f", rsi));
                                             dataLine.add(String.format("%.4f", shgc));
@@ -350,7 +349,7 @@ public class DataExtractor {
                                                     Float.parseFloat(rsiMatcher.group()) / 100f;
                                             float rsi = isSIUnit() ?
                                                     originalRSI :
-                                                    Conversions.convert(THERMAL_RESISTANCE,  originalRSI);
+                                                    ConversionType.THERMAL_RESISTANCE.convert(originalRSI);
                                             data.setInteriorWallRValue(String.format("%.2f", rsi));
                                             break;
                                         }
@@ -383,7 +382,7 @@ public class DataExtractor {
                                                     Float.parseFloat(rsiMatcher.group()) / 100f;
                                             float rsi = isSIUnit() ?
                                                     originalRSI :
-                                                    Conversions.convert(THERMAL_RESISTANCE,  originalRSI);
+                                                    ConversionType.THERMAL_RESISTANCE.convert(originalRSI);
                                             data.setExteriorWallRValue(String.format("%.2f", rsi));
                                             break;
                                         }
@@ -406,7 +405,7 @@ public class DataExtractor {
                                                 Float.parseFloat(matcher.group()) / 100f;
                                         float rsi = isSIUnit() ?
                                                 originalRSI :
-                                                Conversions.convert(THERMAL_RESISTANCE,  originalRSI);
+                                                ConversionType.THERMAL_RESISTANCE.convert(originalRSI);
                                         data.setAddedToSlab(String.format("%.2f", rsi));
                                     }
                                 }
@@ -429,7 +428,7 @@ public class DataExtractor {
                                                     Float.parseFloat(matcher.group()) / 100f;
                                             float rsi = isSIUnit() ?
                                                     originalRSI :
-                                                    Conversions.convert(THERMAL_RESISTANCE,  originalRSI);
+                                                    ConversionType.THERMAL_RESISTANCE.convert(originalRSI);
                                             data.setFloorsAboveFound(String.format("%.2f", rsi));
                                             break;
                                         }
@@ -463,7 +462,7 @@ public class DataExtractor {
                                             String[] values = line.split("\\s");
                                             float rsi = isSIUnit() ?
                                                     Float.parseFloat(values[values.length - 1]) :
-                                                    Conversions.convert(THERMAL_RESISTANCE,  Float.parseFloat(values[values.length - 1]));
+                                                    ConversionType.THERMAL_RESISTANCE.convert(Float.parseFloat(values[values.length - 1]));
                                             buildingAssemblyDetails.get(currentComponent).add(String.format("%.2f", rsi));
                                         }
                                     }
@@ -511,10 +510,10 @@ public class DataExtractor {
                                         String[] values = line.split("\\s");
                                         float volume = isSIUnit() ?
                                                 Float.parseFloat(values[0]) :
-                                                Conversions.convert(VOLUME_M3,  Float.parseFloat(values[0]));
+                                                ConversionType.VOLUME_M3.convert(Float.parseFloat(values[0]));
                                         float energy = isSIUnit() ?
                                                 Float.parseFloat(values[values.length - 2]) :
-                                                Conversions.convert(ENERGY,  Float.parseFloat(values[values.length - 2]));
+                                                ConversionType.ENERGY.convert(Float.parseFloat(values[values.length - 2]));
                                         data.setAirLeakageMechanicalVentilation(Arrays.asList(
                                                 String.format("%.2f", volume), String.format("%.3f", energy)));
                                         break;
@@ -543,7 +542,7 @@ public class DataExtractor {
                                         if (matcher1.find()) {
                                             float value = isSIUnit() ?
                                                     Float.parseFloat(matcher1.group()) :
-                                                    Conversions.convert(VOLUME_FLOW_RATE,  Float.parseFloat(matcher1.group()));
+                                                    ConversionType.VOLUME_FLOW_RATE.convert(Float.parseFloat(matcher1.group()));
                                             String s1 = String.format("%.1f", value) + " L/s";
                                             roomInfo.put("Basement Rooms", s1);
                                             break;
@@ -554,7 +553,7 @@ public class DataExtractor {
                                             String numberOfRooms = matcher.group(2);
                                             float value = isSIUnit() ?
                                                     Float.parseFloat(matcher.group(3)) :
-                                                    Conversions.convert(VOLUME_FLOW_RATE,  Float.parseFloat(matcher.group(3)));
+                                                    ConversionType.VOLUME_FLOW_RATE.convert(Float.parseFloat(matcher.group(3)));
                                             float total = value * Integer.parseInt(numberOfRooms);
                                             String s = numberOfRooms + " rooms @ " + String.format("%.1f", value) + " L/s:"
                                                     + String.format("%.1f", total) + " L/s";
@@ -620,7 +619,7 @@ public class DataExtractor {
                                     if (matcher.find()) {
                                         float value = isSIUnit() ?
                                                 Float.parseFloat(matcher.group()) :
-                                                Conversions.convert(ENERGY,  Float.parseFloat(matcher.group()));
+                                                ConversionType.ENERGY.convert(Float.parseFloat(matcher.group()));
                                         try {
                                             String fieldName = field.getFieldName().substring(0, 1).toUpperCase() + field.getFieldName().substring(1);
                                             Method setter = PdfData.class.getMethod("set" + fieldName, String.class);
@@ -646,7 +645,7 @@ public class DataExtractor {
                                     if (valueMatcher.find()) {
                                         float value = isSIUnit() ?
                                                 Float.parseFloat(valueMatcher.group()) :
-                                                Conversions.convert(ENERGY,  Float.parseFloat(valueMatcher.group()));
+                                                ConversionType.ENERGY.convert(Float.parseFloat(valueMatcher.group()));
                                         data.setAnnualSpaceHeatingEnergyConsumption(String.format("%.3f", value));
                                         break;
                                     }
@@ -663,7 +662,7 @@ public class DataExtractor {
                                     if (matcher.find()) {
                                         float value = isSIUnit() ?
                                                 Float.parseFloat(matcher.group()) :
-                                                Conversions.convert(VOLUME_LITRE,  Float.parseFloat(matcher.group()));
+                                                ConversionType.VOLUME_LITRE.convert(Float.parseFloat(matcher.group()));
                                         data.setDailyHotWaterConsumption(String.format("%.1f", value));
                                         break;
                                     }
@@ -680,7 +679,7 @@ public class DataExtractor {
                                     if (matcher.find()) {
                                         float value = isSIUnit() ?
                                                 Float.parseFloat(matcher.group()) :
-                                                Conversions.convert(TEMPERATURE,  Float.parseFloat(matcher.group()));
+                                                ConversionType.TEMPERATURE.convert(Float.parseFloat(matcher.group()));
                                         data.setHotWaterTemperature(String.format("%.1f",value));
                                         break;
                                     }
@@ -699,7 +698,7 @@ public class DataExtractor {
                                         if (matcher.find()) {
                                             float value = isSIUnit() ?
                                                     Float.parseFloat(matcher.group()) :
-                                                    Conversions.convert(POWER, Float.parseFloat(matcher.group()));
+                                                    ConversionType.POWER.convert(Float.parseFloat(matcher.group()));
                                             try {
                                                 String fieldName = field.getFieldName().substring(0, 1).toUpperCase() + field.getFieldName().substring(1);
                                                 Method setter = PdfData.class.getMethod("set" + fieldName, String.class);
@@ -758,13 +757,13 @@ public class DataExtractor {
                                             heatingLoadValue = Float.parseFloat((parts[i] + "." + parts[i+1]));
                                             i++;
                                         } else {
-                                            heatingLoadValue /= Math.pow(10, decimalPlaces);
+                                            heatingLoadValue /= (float) Math.pow(10, decimalPlaces);
                                         }
                                         lowConfContent.add(field.getTitle() + " " + month + " Heating Load: OCRed=" + original + " -> predicted=" + heatingLoadValue);
                                     }
                                     i++;
                                     float heatingLoad = isSIUnit() ?
-                                            heatingLoadValue : Conversions.convert(ENERGY, heatingLoadValue);
+                                            heatingLoadValue : ConversionType.ENERGY.convert(heatingLoadValue);
 
                                     float furnaceValue = Float.parseFloat(parts[i]);
                                     if (!parts[i].contains(".")) {
@@ -772,12 +771,12 @@ public class DataExtractor {
                                         if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
                                             furnaceValue = Float.parseFloat((parts[i] + "." + parts[i+1]));
                                         } else {
-                                            furnaceValue /= Math.pow(10, decimalPlaces);
+                                            furnaceValue /= (float) Math.pow(10, decimalPlaces);
                                         }
                                         lowConfContent.add(field.getTitle() + " " + month + " Furnace Input: OCRed=" + original + " -> predicted=" + furnaceValue);
                                     }
                                     float furnaceInput = isSIUnit() ?
-                                            furnaceValue : Conversions.convert(ENERGY, furnaceValue);
+                                            furnaceValue : ConversionType.ENERGY.convert(furnaceValue);
 
                                     float COP = Float.parseFloat(parts[parts.length - 1]);
                                     if (!parts[parts.length - 1].contains(".")) {
@@ -785,7 +784,7 @@ public class DataExtractor {
                                         if (!parts[parts.length - 2].contains(".") && parts[parts.length - 1].length() == decimalPlaces) {
                                             COP = Float.parseFloat(parts[parts.length - 2] + "." + parts[parts.length - 1]);
                                         } else {
-                                            COP /= Math.pow(10, decimalPlaces);
+                                            COP /= (float) Math.pow(10, decimalPlaces);
                                         }
                                         lowConfContent.add(field.getTitle() + " " + month + " COP: OCRed=" + original + " -> predicted=" + COP);
                                     }
@@ -833,13 +832,13 @@ public class DataExtractor {
                                             value1 = Float.parseFloat((parts[i] + "." + parts[i+1]));
                                             i++;
                                         } else {
-                                            value1 /= Math.pow(10, decimalPlaces);
+                                            value1 /= (float) Math.pow(10, decimalPlaces);
                                         }
                                         lowConfContent.add(field.getTitle() + " " + month + " Space Heating Primary: OCRed=" + original + " -> predicted=" + value1);
                                     }
                                     i++;
                                     float spaceHeatingPrimary = isSIUnit() ?
-                                            value1 : Conversions.convert(ENERGY, value1);
+                                            value1 : ConversionType.ENERGY.convert(value1);
 
                                     float value2 = Float.parseFloat(parts[i]);
                                     if (!parts[i].contains(".")) {
@@ -848,13 +847,13 @@ public class DataExtractor {
                                             value2 = Float.parseFloat((parts[i] + "." + parts[i+1]));
                                             i++;
                                         } else {
-                                            value2 /= Math.pow(10, decimalPlaces);
+                                            value2 /= (float) Math.pow(10, decimalPlaces);
                                         }
                                         lowConfContent.add(field.getTitle() + " " + month + " Space Heating Secondary: OCRed=" + original + " -> predicted=" + value2);
                                     }
                                     i++;
                                     float spaceHeatingSecondary = isSIUnit() ?
-                                            value2 : Conversions.convert(ENERGY, value2);
+                                            value2 : ConversionType.ENERGY.convert(value2);
 
                                     float value3 = Float.parseFloat(parts[i]);
                                     if (!parts[i].contains(".")) {
@@ -863,13 +862,13 @@ public class DataExtractor {
                                             value3 = Float.parseFloat((parts[i] + "." + parts[i+1]));
                                             i++;
                                         } else {
-                                            value3 /= Math.pow(10, decimalPlaces);
+                                            value3 /= (float) Math.pow(10, decimalPlaces);
                                         }
                                         lowConfContent.add(field.getTitle() + " " + month + " DHW Primary: OCRed=" + original + " -> predicted=" + value3);
                                     }
                                     i++;
                                     float DHWPrimary = isSIUnit() ?
-                                            value3 : Conversions.convert(ENERGY, value3);
+                                            value3 : ConversionType.ENERGY.convert(value3);
 
                                     float value4 = Float.parseFloat(parts[i]);
                                     if(!parts[i].contains(".")) {
@@ -878,13 +877,13 @@ public class DataExtractor {
                                             value4 = Float.parseFloat((parts[i] + "." + parts[i+1]));
                                             i++;
                                         } else {
-                                            value4 /= Math.pow(10, decimalPlaces);
+                                            value4 /= (float) Math.pow(10, decimalPlaces);
                                         }
                                         lowConfContent.add(field.getTitle() + " " + month + " DHW Secondary: OCRed=" + original + " -> predicted=" + value4);
                                     }
                                     i++;
                                     float DHWSecondary = isSIUnit() ?
-                                            value4 : Conversions.convert(ENERGY, value4);
+                                            value4 : ConversionType.ENERGY.convert(value4);
 
                                     float value5 = Float.parseFloat(parts[i]);
                                     if (!parts[i].contains(".")) {
@@ -893,13 +892,13 @@ public class DataExtractor {
                                             value5 = Float.parseFloat((parts[i] + "." + parts[i+1]));
                                             i++;
                                         } else {
-                                            value5 /= Math.pow(10, decimalPlaces);
+                                            value5 /= (float) Math.pow(10, decimalPlaces);
                                         }
                                         lowConfContent.add(field.getTitle() + " " + month + " Lights: OCRed=" + original + " -> predicted=" + value5);
                                     }
                                     i++;
                                     float Lights = isSIUnit() ?
-                                            value5 : Conversions.convert(ENERGY, value5);
+                                            value5 : ConversionType.ENERGY.convert(value5);
 
                                     float value6 = Float.parseFloat(parts[i]);
                                     if (!parts[i].contains(".")) {
@@ -908,13 +907,13 @@ public class DataExtractor {
                                             value6 = Float.parseFloat((parts[i] + "." + parts[i+1]));
                                             i++;
                                         } else {
-                                            value6 /= Math.pow(10, decimalPlaces);
+                                            value6 /= (float) Math.pow(10, decimalPlaces);
                                         }
                                         lowConfContent.add(field.getTitle() + " " + month + " HRV: OCRed=" + original + " -> predicted=" + value6);
                                     }
                                     i++;
                                     float hrv = isSIUnit() ?
-                                            value6 : Conversions.convert(ENERGY, value6);
+                                            value6 : ConversionType.ENERGY.convert(value6);
 
                                     float value7 = Float.parseFloat(parts[i]);
                                     if (!parts[i].contains(".")) {
@@ -922,12 +921,12 @@ public class DataExtractor {
                                         if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
                                             value7 = Float.parseFloat((parts[i] + "." + parts[i+1]));
                                         } else {
-                                            value7 /= Math.pow(10, decimalPlaces);
+                                            value7 /= (float) Math.pow(10, decimalPlaces);
                                         }
                                         lowConfContent.add(field.getTitle() + " " + month + " AC: OCRed=" + original + " -> predicted=" + value7);
                                     }
                                     float ac = isSIUnit() ?
-                                            value7 : Conversions.convert(ENERGY, value7);
+                                            value7 : ConversionType.ENERGY.convert(value7);
 
                                     List<String> values = List.of(String.format("%.1f", spaceHeatingPrimary), String.format("%.1f", spaceHeatingSecondary),
                                             String.format("%.1f", DHWPrimary), String.format("%.1f", DHWSecondary),
@@ -1045,7 +1044,7 @@ public class DataExtractor {
         if (matcher.find()) {
             value = isSIUnit() ?
                     Float.parseFloat(matcher.group()) :
-                    Conversions.convert(POWER, Float.parseFloat(matcher.group()));
+                    ConversionType.POWER.convert(Float.parseFloat(matcher.group()));
         }
         return String.valueOf(value);
     }
@@ -1106,19 +1105,19 @@ public class DataExtractor {
                     currLocation = numberMatcher.find() ? currLocation - 1 : currLocation - 2;
                     heatLoss = isSIUnit() ?
                             Float.parseFloat(values[currLocation]) :
-                            Conversions.convert(ENERGY, Float.parseFloat(values[currLocation]));
+                            ConversionType.ENERGY.convert(Float.parseFloat(values[currLocation]));
 
                     numberMatcher = numberPattern.matcher(values[currLocation - 1]);
                     currLocation = numberMatcher.find() ? currLocation - 1 : currLocation - 2;
                     rsi = isSIUnit() ?
                             Float.parseFloat(values[currLocation]) :
-                            Conversions.convert(THERMAL_RESISTANCE, Float.parseFloat(values[currLocation]));
+                            ConversionType.THERMAL_RESISTANCE.convert(Float.parseFloat(values[currLocation]));
 
                     numberMatcher = numberPattern.matcher(values[currLocation - 1]);
                     currLocation = numberMatcher.find() ? currLocation - 1 : currLocation - 2;
                     area = isSIUnit() ?
                             Float.parseFloat(values[currLocation]) :
-                            Conversions.convert(AREA, Float.parseFloat(values[currLocation]));
+                            ConversionType.AREA.convert(Float.parseFloat(values[currLocation]));
 
                     buildingParametersZone.put(name.toString(), Arrays.asList(String.format("%.2f", area),
                             String.format("%.2f", rsi), String.format("%.2f", heatLoss)));
@@ -1170,9 +1169,9 @@ public class DataExtractor {
                     }
 
                     float area = isSIUnit() ?
-                            secondLastValue : Conversions.convert(AREA, secondLastValue);
+                            secondLastValue : ConversionType.AREA.convert(secondLastValue);
                     float rsi = isSIUnit() ?
-                            lastValue : Conversions.convert(THERMAL_RESISTANCE, lastValue);
+                            lastValue : ConversionType.THERMAL_RESISTANCE.convert(lastValue);
 
                     components.add(Arrays.asList(String.format("%.2f", area), String.format("%.2f", rsi)));
                 }

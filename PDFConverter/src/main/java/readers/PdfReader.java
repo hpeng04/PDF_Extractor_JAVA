@@ -26,17 +26,21 @@ public class PdfReader extends Reader {
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         ConcurrentHashMap<Integer, List<Word>> resultsWithDetail = new ConcurrentHashMap<>();
 
-        imgs.forEach((key, value) -> executor.submit(() -> {
-            ITesseract reader = new Reader().tessReader;
-            List<Word> ocrResultDetailed = reader.getWords(value, TEXT_LINE);
-            resultsWithDetail.put(key, ocrResultDetailed);
-        }));
-
-        executor.shutdown();
         try {
+            imgs.forEach((key, value) -> executor.submit(() -> {
+                ITesseract reader = new Reader().tessReader;
+                List<Word> ocrResultDetailed = reader.getWords(value, TEXT_LINE);
+                resultsWithDetail.put(key, ocrResultDetailed);
+            }));
+
+            executor.shutdown();
             executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            Thread.currentThread().interrupt(); // Preserve the interrupt
+        } finally {
+            if (!executor.isTerminated()) {
+                executor.shutdownNow();
+            }
         }
 
 
