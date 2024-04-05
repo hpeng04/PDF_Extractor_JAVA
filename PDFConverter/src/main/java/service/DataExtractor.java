@@ -3,7 +3,7 @@ package service;
 import lombok.Setter;
 import model.Fields;
 import model.PdfData;
-import util.Conversions;
+import utils.Conversions;
 import lombok.Getter;
 import net.sourceforge.tess4j.TesseractException;
 import net.sourceforge.tess4j.Word;
@@ -19,7 +19,7 @@ import java.util.concurrent.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static util.Conversions.*;
+import static utils.Conversions.*;
 import static imgprocessor.PdfImageProcessor.convert;
 
 public class DataExtractor {

@@ -1,12 +1,8 @@
 import model.PdfData;
-import org.apache.poi.ss.formula.functions.T;
-import org.junit.Ignore;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import readers.PdfReader;
 import service.DataExtractor;
 import service.TreeBuilder;
-import util.TreeNode;
 
 import java.io.File;
 import java.util.ArrayList;

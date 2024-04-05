@@ -1,16 +1,12 @@
-import model.Fields;
 import model.PdfData;
 import net.sourceforge.tess4j.TesseractException;
-import org.junit.Ignore;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import service.DataExtractor;
 import service.TreeBuilder;
-import util.TreeNode;
+import utils.TreeNode;
 
 import java.io.File;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
