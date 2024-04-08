@@ -132,7 +132,7 @@ public class DataExtractor {
 
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
-        HashMap<String, String> occupants = new HashMap<>();
+        ConcurrentHashMap<String, String> occupants = new ConcurrentHashMap<>();
 
         for (Fields field : Fields.values()) {
             executor.submit(() -> {
@@ -996,6 +996,9 @@ public class DataExtractor {
         }
 
         data.setOccupants(occupants);
+        if (occupants.size() < 3) {
+            lowConfContent.add("Occupants");
+        }
         return data;
     }
 

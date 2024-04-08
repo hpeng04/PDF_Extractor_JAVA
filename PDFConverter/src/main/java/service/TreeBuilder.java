@@ -11,6 +11,7 @@ import utils.TreeNode;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class TreeBuilder implements ITreeBuilder {
     @Getter
@@ -62,7 +63,7 @@ public class TreeBuilder implements ITreeBuilder {
                     case OCCUPANTS -> {
                         String parentTitle = field.getParent();
                         String title = field.getTitle();
-                        HashMap<String, String> unsortedMap = (HashMap<String, String>) get(field.getFieldName(), pdfData);
+                        ConcurrentHashMap<String, String> unsortedMap = (ConcurrentHashMap<String, String>) get(field.getFieldName(), pdfData);
                         if (unsortedMap == null || unsortedMap.isEmpty()) {
                             writeTree(parentTitle, title, "", fileIndex);
                         } else {

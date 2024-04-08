@@ -6,6 +6,7 @@ import lombok.Setter;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Getter @Setter
 public class PdfData {
@@ -14,7 +15,7 @@ public class PdfData {
     private String company;
     private String frontOrientation;
     private String yearHouseBuilt;
-    private HashMap<String, String> occupants; // [Occupant, Age]
+    private ConcurrentHashMap<String, String> occupants; // [Occupant, Age]
 
     private String daytimeSetpoint;
     private String nightimeSetpoint;
