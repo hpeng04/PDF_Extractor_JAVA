@@ -12,19 +12,18 @@ import java.nio.file.Path;
 
 public class Reader {
 
-    public ITesseract tessReader; //TODO: CHANGE BACK
+    protected ITesseract tessReader;
 
     public Reader(){
         this.tessReader = new Tesseract();
         setTessData((this.tessReader));
     }
 
-    private static void setTessData(ITesseract reader) {
+    private void setTessData(ITesseract reader) {
         try {
             // Create a temporary directory to store tessdata
             Path tempDir = Files.createTempDirectory("tessdata");
 
-            // Assuming 'eng.traineddata' is stored in 'src/main/resources'
             String resourcePath = "/eng.traineddata";
             InputStream in = Reader.class.getResourceAsStream(resourcePath);
             File tessDataFile = new File(tempDir.toFile(), "eng.traineddata");
