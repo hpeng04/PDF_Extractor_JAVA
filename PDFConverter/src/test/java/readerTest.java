@@ -22,12 +22,12 @@ public class readerTest {
 
     @Test
     public void matcherTest(){
-        String str1 = "Southeast Windows";
+        String str1 = ">19.1";
         String str2 = "east Windows";
-        Matcher matcher = Pattern.compile("^" + str2).matcher(str1);
-
+        Matcher matcher = Pattern.compile("\\d+.\\d+").matcher(str1);
         if (matcher.find()) {
             System.out.println("Matched");
+            System.out.printf("Found: %s%n", matcher.group());
         } else {
             System.out.println("Not Matched");
         }

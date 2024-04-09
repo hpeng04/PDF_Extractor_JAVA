@@ -33,7 +33,7 @@ public class PdfData {
     private String interiorWallRValue;
     private String exteriorWallType;
     private String exteriorWallRValue;
-    private String addedToSlab;
+    private List<String> addedToSlab;
     private String floorsAboveFound;
 
     private HashMap<String, List<String>> buildingAssemblyDetails; // Component Type -> [RSI1, RSI2,...]

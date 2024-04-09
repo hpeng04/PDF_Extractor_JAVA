@@ -143,7 +143,7 @@ public class PdfSelectorGUI extends JFrame {
     public void exportToExcelAction(ActionEvent event) {
         loadLastSelectedDirectory(EXCEL);
         JFileChooser fileChooser = new JFileChooser();
-        if (lastExcelDirectory != null) {fileChooser.setCurrentDirectory(lastExcelDirectory);}
+        if (lastPdfDirectory != null) {fileChooser.setCurrentDirectory(lastPdfDirectory);}
         fileChooser.setDialogTitle("Select an Excel File or Type Name for New");
         fileChooser.setAcceptAllFileFilterUsed(false);
         FileNameExtensionFilter filter = new FileNameExtensionFilter("Excel Files", "xls", "xlsx");
@@ -161,8 +161,6 @@ public class PdfSelectorGUI extends JFrame {
             if (!filter.accept(fileToSave)) {
                 fileToSave = new File(fileToSave.toString() + ".xlsx");
             }
-            lastExcelDirectory = fileToSave.getParentFile();
-            saveLastSelectedDirectory(EXCEL);
 
             ProgressDialog progressDialog = new ProgressDialog(null, "Processing...");
             progressDialog.showDialog();
@@ -359,7 +357,7 @@ public class PdfSelectorGUI extends JFrame {
         Properties prop = new Properties();
         try (OutputStream output = new FileOutputStream("config.properties")) {
             if (lastPdfDirectory != null) prop.setProperty("lastPdfDirectory", lastPdfDirectory.getAbsolutePath());
-            if (lastExcelDirectory != null) prop.setProperty("lastExcelDirectory", lastExcelDirectory.getAbsolutePath());
+//            if (lastExcelDirectory != null) prop.setProperty("lastExcelDirectory", lastExcelDirectory.getAbsolutePath());
             prop.store(output, null);
 
         } catch (IOException io) {
@@ -371,18 +369,18 @@ public class PdfSelectorGUI extends JFrame {
         try (InputStream input = new FileInputStream("config.properties")) {
             prop.load(input);
             switch (mode) {
-                case 0 -> { // PDF
+                case 0,1 -> { // PDF
                     String lastPdfDirPath = prop.getProperty("lastPdfDirectory");
                     if (lastPdfDirPath != null && !lastPdfDirPath.isEmpty()) {
                         lastPdfDirectory = new File(lastPdfDirPath);
                     }
                 }
-                case 1 -> { // Excel
-                    String lastExcelDirPath = prop.getProperty("lastExcelDirectory");
-                    if (lastExcelDirPath != null && !lastExcelDirPath.isEmpty()) {
-                        lastExcelDirectory = new File(lastExcelDirPath);
-                    }
-                }
+//                case 1 -> { // Excel
+//                    String lastExcelDirPath = prop.getProperty("lastExcelDirectory");
+//                    if (lastExcelDirPath != null && !lastExcelDirPath.isEmpty()) {
+//                        lastExcelDirectory = new File(lastExcelDirPath);
+//                    }
+//                }
             }
         } catch (IOException ignored) {
         }

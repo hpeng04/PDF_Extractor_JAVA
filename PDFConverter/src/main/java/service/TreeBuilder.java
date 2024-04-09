@@ -92,6 +92,21 @@ public class TreeBuilder implements ITreeBuilder {
                         writeTree(parentTitle, typeTitle, type, fileIndex);
                         writeTree(parentTitle, rValueTitle, rValue, fileIndex);
                     }
+                    case ADDED_TO_SLAB -> {
+                        List<String> addedToSlab = (List<String>) get(field.getFieldName(), pdfData);
+                        if (addedToSlab == null || addedToSlab.isEmpty()) {
+                            break;
+                        }
+                        String parentTitle = field.getParent();
+                        for (int i = 0; i < addedToSlab.size(); i++) {
+                            int num = i + 1;
+                            String title = field.getTitle() + " - " + num;
+                            String value = addedToSlab.get(i);
+                            writeTree(parentTitle, title, value, fileIndex);
+                        }
+                        // clean memory
+                        addedToSlab = null;
+                    }
                     case WINDOW_CHARACTERISTICS -> {
                         HashMap<String, List<List<String>>> windowCharacteristics = pdfData.getWindowCharacteristics();
                         if (windowCharacteristics == null || windowCharacteristics.isEmpty()) {
@@ -342,6 +357,12 @@ public class TreeBuilder implements ITreeBuilder {
         sortContentChild(buildingParamZone2Order, this.tree, "Building Parameters Summary - Zone 2: Basement");
         sortContentChild(ventilationRequirementsOrder, this.tree, "F326 Ventilation Requirements");
 
+        TreeNode<Object> tempZone2 = this.tree.getNode("Building Parameters Summary - Zone 2: Basement");
+        this.tree.removeChild("Building Parameters Summary - Zone 2: Basement");
+        if (tempZone2 != null) {
+            this.tree.insert(tempZone2, this.tree.getIndex("Building Parameters Summary - Zone 1: Above grade") + 1);
+        }
+
         // clean memory
         windowCharOrder = null;
         buildingParamOrder = null;
@@ -417,7 +438,6 @@ public class TreeBuilder implements ITreeBuilder {
             for (TreeNode<Object> childTitle : parent.getChildren()) {
                 if (childTitle.containsPartialTitle(s)) {
                     tempList.add(childTitle);
-
                 }
             }
         }

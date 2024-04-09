@@ -295,7 +295,7 @@ public class DataExtractor {
                             String start = "CEILING COMPONENTS";
                             String end = "MAIN WALL COMPONENTS";
                             Pattern pattern = Pattern.compile("\\d+(\\.\\d+)?\\s\\d+(\\.\\d+)?");
-                            List<List<String>> value = extractTableComponents(content, content_confidence, start, end, pattern);
+                            List<List<String>> value = extractTableComponents(content, content_confidence, start, end, pattern, 6);
                             data.setCeilingComponents(value);
                             // clean memory
                             value = null;
@@ -304,7 +304,7 @@ public class DataExtractor {
                             String start = "MAIN WALL COMPONENTS";
                             String end = "EXPOSED FLOORS";
                             Pattern pattern = Pattern.compile("\\d+(\\.\\d+)?\\s\\d+(\\.\\d+)?");
-                            List<List<String>> value = extractTableComponents(content, content_confidence, start, end, pattern);
+                            List<List<String>> value = extractTableComponents(content, content_confidence, start, end, pattern, 7);
                             data.setMainWallComponents(value);
                             // clean memory
                             value = null;
@@ -313,7 +313,7 @@ public class DataExtractor {
                             String start = "EXPOSED FLOORS";
                             String end = "EXPOSED FLOOR SCHEDULE";
                             Pattern pattern = Pattern.compile("\\d+(\\.\\d+)?\\s(\\d+(\\.\\d+)?|>)");
-                            List<List<String>> value = extractTableComponents(content, content_confidence, start, end, pattern);
+                            List<List<String>> value = extractTableComponents(content, content_confidence, start, end, pattern, 3);
                             data.setExposedFloors(value);
                             // clean memory
                             value = null;
@@ -322,7 +322,7 @@ public class DataExtractor {
                             String start = "DOORS";
                             String end = "FOUNDATIONS";
                             Pattern pattern = Pattern.compile("\\d+(\\.\\d+)?\\s\\d+(\\.\\d+)?");
-                            List<List<String>> value = extractTableComponents(content, content_confidence, start, end, pattern);
+                            List<List<String>> value = extractTableComponents(content, content_confidence, start, end, pattern, 5);
                             data.setDoors(value);
                             // clean memory
                             value = null;
@@ -392,9 +392,11 @@ public class DataExtractor {
                             }
                         }
                         case ADDED_TO_SLAB -> {
+                            List<String> addToSlabRvalueList = new ArrayList<>();
                             for (int i = 0; i < content.size(); i++) {
                                 String line = content.get(i);
-                                if (line.contains(field.getKeyword())) {
+                                if (line.toLowerCase().contains(field.getKeyword().toLowerCase())) {
+                                    if (line.contains("FOUNDATION CODE SCHEDULE") || line.contains("BUILDING ASSEMBLY DETAILS")) break;
                                     if (content_confidence.get(i) < confThreshold) lowConfContent.add(field.getTitle() + " R-Value");
                                     Pattern pattern = Pattern.compile("\\d+(\\.\\d+)?");
                                     Matcher matcher = pattern.matcher(line);
@@ -406,10 +408,11 @@ public class DataExtractor {
                                         float rsi = isSIUnit() ?
                                                 originalRSI :
                                                 ConversionType.THERMAL_RESISTANCE.convert(originalRSI);
-                                        data.setAddedToSlab(String.format("%.2f", rsi));
+                                        addToSlabRvalueList.add(String.format("%.2f", rsi));
                                     }
                                 }
                             }
+                            data.setAddedToSlab(addToSlabRvalueList);
                         }
                         case FLOORS_ABOVE_FOUND -> {
                             for (int i = 1; i < content.size(); i++) {
@@ -439,7 +442,7 @@ public class DataExtractor {
                         case BUILDING_ASSEMBLY_DETAILS -> {
                             HashMap<String, List<String>> buildingAssemblyDetails = new HashMap<>();
                             String currentComponent = null;
-                            Pattern componentsPattern = Pattern.compile("^(MAIN WALL COMPONENTS|CEILING COMPONENTS|EXPOSED FLOORS|FLOORS ABOVE)(\n)?$");
+                            Pattern componentsPattern = Pattern.compile("^(MAIN WALL( COMPONENTS)?|CEILING COMPONENTS|EXPOSED FLOORS|FLOORS ABOVE)(\n)?$");
                             boolean foundSectionStart = false;
 
                             for (int i = 0; i < content.size(); i++) {
@@ -453,6 +456,8 @@ public class DataExtractor {
                                     Matcher componentsMatcher = componentsPattern.matcher(line);
                                     if (componentsMatcher.find()) {
                                         currentComponent = componentsMatcher.group(1);
+                                        // add COMPONENTS back if pattern didn't match it
+                                        if (currentComponent.equals("MAIN WALL")) currentComponent = "MAIN WALL COMPONENTS";
                                         buildingAssemblyDetails.putIfAbsent(currentComponent, new ArrayList<>());
                                     } else {
                                         Pattern valuePattern = Pattern.compile("\\d+(\\.\\d+)?\\s\\d+(\\.\\d+)?");
@@ -574,6 +579,25 @@ public class DataExtractor {
                             data.setVentilationRequirements(roomInfo);
                             // clean memory
                             roomInfo = null;
+                        }
+                        case SYSTEM_TYPE -> {
+                            boolean foundSectionStart = false;
+
+                            for (int i = 0; i < content.size(); i++) {
+                                String line = content.get(i);
+                                if (line.contains("CENTRAL VENTILATION SYSTEM")) {
+                                    foundSectionStart = true;
+                                    continue;
+                                }
+                                if (foundSectionStart) {
+                                    if (line.contains(field.getKeyword())) {
+                                        if (content_confidence.get(i) < confThreshold) lowConfContent.add(field.getTitle());
+                                        String value = line.replace(field.getKeyword(), "").replace("\n", "").stripLeading();
+                                        data.setSystemType(value);
+                                        break;
+                                    }
+                                }
+                            }
                         }
                         case FP_POWER_0 -> {
                             Pattern pattern = Pattern.compile("\\d+(\\.\\d+)?\\s?(Watts|watts)");
@@ -746,15 +770,18 @@ public class DataExtractor {
                                     // SI unit contains 1 decimal place, imperial unit contains 3 decimal places
                                     int decimalPlaces = isSIUnit() ? 1 : 3;
                                     int i = 1;
+                                    // if current number does not contain a decimal point, then put it into lowConfContent,
+                                    // and check if the next number is a single digit, if so, assume the actual number is separated to two parts, (ie. 123 4)
+                                    // or, the next number could be .4 (ie. 123 .4), both cases, combine the two parts to get the actual number,
+                                    // if not, assume the current number is a whole number, and divide it by 10^decimalPlaces (ie. 1234)
                                     float heatingLoadValue = Float.parseFloat(parts[i]);
                                     if (!parts[i].contains(".")) {
-                                        // if current number does not contain a decimal point, then put it into lowConfContent,
-                                        // and check if the next number is a single digit, if so, assume the actual number is separated to two parts, (ie. 123 4)
-                                        // combine the two parts to get the actual number
-                                        // if not, assume the current number is a whole number, and divide it by 10^decimalPlaces (ie. 1234)
                                         String original = parts[i];
                                         if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
                                             heatingLoadValue = Float.parseFloat((parts[i] + "." + parts[i+1]));
+                                            i++;
+                                        } else if (parts[i+1].matches("^\\.\\d{" + decimalPlaces + "}$")) {
+                                            heatingLoadValue = Float.parseFloat(parts[i] + parts[i+1]);
                                             i++;
                                         } else {
                                             heatingLoadValue /= (float) Math.pow(10, decimalPlaces);
@@ -770,6 +797,9 @@ public class DataExtractor {
                                         String original = parts[i];
                                         if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
                                             furnaceValue = Float.parseFloat((parts[i] + "." + parts[i+1]));
+                                        } else if (parts[i+1].matches("^\\.\\d{" + decimalPlaces + "}$")) {
+                                            furnaceValue = Float.parseFloat(parts[i] + parts[i+1]);
+                                            i++;
                                         } else {
                                             furnaceValue /= (float) Math.pow(10, decimalPlaces);
                                         }
@@ -787,6 +817,9 @@ public class DataExtractor {
                                             COP /= (float) Math.pow(10, decimalPlaces);
                                         }
                                         lowConfContent.add(field.getTitle() + " " + month + " COP: OCRed=" + original + " -> predicted=" + COP);
+                                    } else if (parts[parts.length - 1].matches("^\\.\\d{" + decimalPlaces + "}$") && !parts[parts.length - 2].contains(".")) {
+                                        COP = Float.parseFloat(parts[parts.length - 2] + parts[parts.length - 1]);
+                                        lowConfContent.add(field.getTitle() + " " + month + " COP: OCRed=" + parts[parts.length - 1] + " -> predicted=" + COP);
                                     }
 
                                     List<String> values = List.of(String.format("%.1f", heatingLoad),
@@ -821,17 +854,20 @@ public class DataExtractor {
                                     // SI unit contains 1 decimal place, imperial unit contains 3 decimal places
                                     int decimalPlaces = isSIUnit() ? 1 : 3;
                                     int i = 1;
+                                    // if current number does not contain a decimal point, then put it into lowConfContent,
+                                    // and check if the next number is a single digit, if so, assume the actual number is separated to two parts, (ie. 123 4)
+                                    // or, the next number could be .4 (ie. 123 .4), both cases, combine the two parts to get the actual number,
+                                    // if not, assume the current number is a whole number, and divide it by 10^decimalPlaces (ie. 1234)
                                     float value1 = Float.parseFloat(parts[i]);
                                     if (!parts[i].contains(".")) {
-                                        // if current number does not contain a decimal point, then put it into lowConfContent,
-                                        // and check if the next number is a single digit, if so, assume the actual number is separated to two parts, (ie. 123 4)
-                                        // combine the two parts to get the actual number
-                                        // if not, assume the current number is a whole number, and divide it by 10^decimalPlaces (ie. 1234)
                                         String original = parts[i];
-                                        if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
+                                        if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) { // case 123 4
                                             value1 = Float.parseFloat((parts[i] + "." + parts[i+1]));
                                             i++;
-                                        } else {
+                                        } else if (parts[i+1].matches("^\\.\\d{" + decimalPlaces + "}$")) { // case 123 .4
+                                            value1 = Float.parseFloat(parts[i] + parts[i+1]);
+                                            i++;
+                                        } else { // case 1234
                                             value1 /= (float) Math.pow(10, decimalPlaces);
                                         }
                                         lowConfContent.add(field.getTitle() + " " + month + " Space Heating Primary: OCRed=" + original + " -> predicted=" + value1);
@@ -845,6 +881,9 @@ public class DataExtractor {
                                         String original = parts[i];
                                         if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
                                             value2 = Float.parseFloat((parts[i] + "." + parts[i+1]));
+                                            i++;
+                                        } else if (parts[i+1].matches("^\\.\\d{" + decimalPlaces + "}$")) {
+                                            value2 = Float.parseFloat(parts[i] + parts[i+1]);
                                             i++;
                                         } else {
                                             value2 /= (float) Math.pow(10, decimalPlaces);
@@ -861,6 +900,9 @@ public class DataExtractor {
                                         if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
                                             value3 = Float.parseFloat((parts[i] + "." + parts[i+1]));
                                             i++;
+                                        } else if (parts[i+1].matches("^\\.\\d{" + decimalPlaces + "}$")) {
+                                            value3 = Float.parseFloat(parts[i] + parts[i+1]);
+                                            i++;
                                         } else {
                                             value3 /= (float) Math.pow(10, decimalPlaces);
                                         }
@@ -875,6 +917,9 @@ public class DataExtractor {
                                         String original = parts[i];
                                         if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
                                             value4 = Float.parseFloat((parts[i] + "." + parts[i+1]));
+                                            i++;
+                                        } else if (parts[i+1].matches("^\\.\\d{" + decimalPlaces + "}$")) {
+                                            value4 = Float.parseFloat(parts[i] + parts[i+1]);
                                             i++;
                                         } else {
                                             value4 /= (float) Math.pow(10, decimalPlaces);
@@ -891,6 +936,9 @@ public class DataExtractor {
                                         if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
                                             value5 = Float.parseFloat((parts[i] + "." + parts[i+1]));
                                             i++;
+                                        } else if (parts[i+1].matches("^\\.\\d{" + decimalPlaces + "}$")) {
+                                            value5 = Float.parseFloat(parts[i] + parts[i+1]);
+                                            i++;
                                         } else {
                                             value5 /= (float) Math.pow(10, decimalPlaces);
                                         }
@@ -906,6 +954,9 @@ public class DataExtractor {
                                         if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
                                             value6 = Float.parseFloat((parts[i] + "." + parts[i+1]));
                                             i++;
+                                        } else if (parts[i+1].matches("^\\.\\d{" + decimalPlaces + "}$")) {
+                                            value6 = Float.parseFloat(parts[i] + parts[i+1]);
+                                            i++;
                                         } else {
                                             value6 /= (float) Math.pow(10, decimalPlaces);
                                         }
@@ -920,6 +971,8 @@ public class DataExtractor {
                                         String original = parts[i];
                                         if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) {
                                             value7 = Float.parseFloat((parts[i] + "." + parts[i+1]));
+                                        } else if (parts[i+1].matches("^\\.\\d{" + decimalPlaces + "}$")) {
+                                            value7 = Float.parseFloat(parts[i] + parts[i+1]);
                                         } else {
                                             value7 /= (float) Math.pow(10, decimalPlaces);
                                         }
@@ -959,7 +1012,7 @@ public class DataExtractor {
                             }
                         }
                         /*
-                        Nightime Setback, Air Leakage Test Results, System Type, Air Distribution/circulation type,
+                        Nightime Setback, Air Leakage Test Results, Air Distribution/circulation type,
                         Air Distribution/circulation fan power, Operation schedule, Seasonal Heat Recovery Ventilator,
                          AFUE, High Speed Fan Power, PRIMARY Water Heating, Energy Factor, Heat Pump and Furnace Annual COP,
                         Primary System Seasonal Efficiency, Usable Internal Gains Fraction, Usable Solar Gains Fraction,
@@ -1047,30 +1100,39 @@ public class DataExtractor {
         if (matcher.find()) {
             value = isSIUnit() ?
                     Float.parseFloat(matcher.group()) :
-                    ConversionType.POWER.convert(Float.parseFloat(matcher.group()));
+                    ConversionType.ENERGY.convert(Float.parseFloat(matcher.group()));
         }
         return String.valueOf(value);
     }
 
     private void findPowerAndEfficiency(List<String> content, List<Float> content_confidence, Fields field, String keywordImperial, PdfData data, Pattern pattern) {
+        boolean foundSectionStart = false;
+
         for (int i = 0; i < content.size(); i++) {
             String line = content.get(i);
-            if (line.contains("Page")) continue;
-            if (line.contains(field.getKeyword()) || line.contains(keywordImperial)) {
-                if (content_confidence.get(i) < confThreshold) lowConfContent.add(line);
-                Matcher matcher = pattern.matcher(line);
-                if (matcher.find()) {
-                    try {
-                        String fieldName = field.getFieldName().substring(0, 1).toUpperCase() + field.getFieldName().substring(1);
-                        Method setter = PdfData.class.getMethod("set" + fieldName, String.class);
-                        setter.invoke(data, matcher.group());
-                        break;
-                    } catch (NoSuchMethodException | InvocationTargetException |
-                             IllegalAccessException e) {
-                        break;
+            if (line.contains("CENTRAL VENTILATION SYSTEM")) {
+                foundSectionStart = true;
+                continue;
+            }
+            if (foundSectionStart) {
+                if (line.contains("Page")) continue;
+                if (line.contains(field.getKeyword()) || line.contains(keywordImperial)) {
+                    if (content_confidence.get(i) < confThreshold) lowConfContent.add(line);
+                    Matcher matcher = pattern.matcher(line);
+                    if (matcher.find()) {
+                        try {
+                            String fieldName = field.getFieldName().substring(0, 1).toUpperCase() + field.getFieldName().substring(1);
+                            Method setter = PdfData.class.getMethod("set" + fieldName, String.class);
+                            setter.invoke(data, matcher.group());
+                            break;
+                        } catch (NoSuchMethodException | InvocationTargetException |
+                                 IllegalAccessException e) {
+                            break;
+                        }
                     }
                 }
             }
+
         }
     }
 
@@ -1131,7 +1193,7 @@ public class DataExtractor {
     }
 
     private List<List<String>> extractTableComponents(List<String> content, List<Float> content_confidence, String sectionStart,
-                                                     String end, Pattern pattern) {
+                                                     String end, Pattern pattern, int numColumns) {
         List<List<String>> components = new ArrayList<>();
         boolean foundStartMarker = false;
 
@@ -1144,11 +1206,19 @@ public class DataExtractor {
             }
             if (foundStartMarker) {
                 if (sectionStart.equals("MAIN WALL COMPONENTS")) {
-                    Pattern endPattern = Pattern.compile("(WALL CODE SCHEDULE|EXPOSED FLOORS)");
+                    Pattern endPattern = Pattern.compile("(EXPOSED FLOORS|WALL CODE SCHEDULE|Indicates)");
                     Matcher endMatcher = endPattern.matcher(line);
                     if (endMatcher.find()) break;
                 } else if (sectionStart.equals("EXPOSED FLOORS")) {
                     Pattern endPattern = Pattern.compile("(DOORS|EXPOSED FLOOR SCHEDULE|Indicates)");
+                    Matcher endMatcher = endPattern.matcher(line);
+                    if (endMatcher.find()) break;
+                } else if (sectionStart.equals("CEILING COMPONENTS")) {
+                    Pattern endPattern = Pattern.compile("(MAIN WALL COMPONENTS|CEILING CODE SCHEDULE|Indicates)");
+                    Matcher endMatcher = endPattern.matcher(line);
+                    if (endMatcher.find()) break;
+                } else if (sectionStart.equals("DOORS")) {
+                    Pattern endPattern = Pattern.compile("(FOUNDATIONS|DOOR CODE SCHEDULE|Indicates)");
                     Matcher endMatcher = endPattern.matcher(line);
                     if (endMatcher.find()) break;
                 } else {
@@ -1157,26 +1227,41 @@ public class DataExtractor {
 
                 Matcher matcher = pattern.matcher(line);
                 if (matcher.find()) {
+                    Pattern numberPattern1 = Pattern.compile("\\d+.\\d+");
                     if (content_confidence.get(i) < confThreshold) lowConfContent.add(sectionStart + " " + content.get(i));
 
-                    List<String> values = new ArrayList<>(Arrays.asList(line.split("\\s")));
-                    if (values.size() < 3) continue;
-                    float lastValue = Float.parseFloat(values.get(values.size() - 1));
-                    Pattern numberPattern = Pattern.compile("\\d+");
-                    Matcher numberMatcher = numberPattern.matcher(values.get(values.size() - 2));
-                    float secondLastValue = 0;
-                    if (numberMatcher.find()) {
-                        secondLastValue = Float.parseFloat(values.get(values.size() - 2));
-                    } else {
-                        secondLastValue = Float.parseFloat(values.get(values.size() - 3));
+                    // check if the line contains a value at least
+                    if (numberPattern1.matcher(line).find()) {
+                        List<String> values = new ArrayList<>(Arrays.asList(line.split("\\s")));
+                        if (values.size() < numColumns) continue;
+
+                        // scenarios: 1. >19.1 as a whole number, 2. > and 19.1 are separated in two lists, 3. 19.1 single number
+                        Pattern numberPattern = Pattern.compile("\\d+.\\d+");
+                        float lastValue = 0;
+                        Matcher matcher1 = numberPattern.matcher(values.get(values.size() - 1));
+                        if (matcher1.find()) {
+                            String lastString = matcher1.group();
+                            lastValue = Float.parseFloat(lastString);
+                        }
+
+                        float secondLastValue = 0;
+                        Matcher matcher2 = numberPattern.matcher(values.get(values.size() - 2));
+                        if (matcher2.find()) {
+                            secondLastValue = Float.parseFloat(matcher2.group());
+                        } else {
+                            Matcher matcher3 = numberPattern.matcher(values.get(values.size() - 3));
+                            if (matcher3.find()) {
+                                secondLastValue = Float.parseFloat(matcher3.group());
+                            }
+                        }
+
+                        float area = isSIUnit() ?
+                                secondLastValue : ConversionType.AREA.convert(secondLastValue);
+                        float rsi = isSIUnit() ?
+                                lastValue : ConversionType.THERMAL_RESISTANCE.convert(lastValue);
+
+                        components.add(Arrays.asList(String.format("%.2f", area), String.format("%.2f", rsi)));
                     }
-
-                    float area = isSIUnit() ?
-                            secondLastValue : ConversionType.AREA.convert(secondLastValue);
-                    float rsi = isSIUnit() ?
-                            lastValue : ConversionType.THERMAL_RESISTANCE.convert(lastValue);
-
-                    components.add(Arrays.asList(String.format("%.2f", area), String.format("%.2f", rsi)));
                 }
             }
         }
