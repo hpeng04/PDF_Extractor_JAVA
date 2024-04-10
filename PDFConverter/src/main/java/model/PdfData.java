@@ -3,6 +3,7 @@ package model;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,12 +30,12 @@ public class PdfData {
     private List<List<String>> mainWallComponents; // [[Gross Area, RSI],...]
     private List<List<String>> exposedFloors; // [[Area, RSI],...]
     private List<List<String>> doors; // [[Gross Area, RSI],...]
-    private String interiorWallType;
-    private String interiorWallRValue;
-    private String exteriorWallType;
-    private String exteriorWallRValue;
+    private List<String> interiorWallType = Collections.singletonList("");
+    private List<String> interiorWallRValue = Collections.singletonList("");
+    private List<String> exteriorWallType = Collections.singletonList("");
+    private List<String> exteriorWallRValue = Collections.singletonList("");
     private List<String> addedToSlab;
-    private String floorsAboveFound;
+    private List<String> floorsAboveFound;
 
     private HashMap<String, List<String>> buildingAssemblyDetails; // Component Type -> [RSI1, RSI2,...]
     private HashMap<String, List<String>> buildingParametersZone1; // Component -> [Area, RSI, Heat Loss]

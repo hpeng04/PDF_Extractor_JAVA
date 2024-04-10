@@ -56,6 +56,9 @@ public class TreeBuilder implements ITreeBuilder {
             TreeNode<Object> tempWindowChar = new TreeNode<>();
             TreeNode<Object> tempBuildingParam = new TreeNode<>();
             TreeNode<Object> tempBuildingAssembly = new TreeNode<>();
+            TreeNode<Object> tempFoundations = new TreeNode<>();
+            LinkedHashMap<String, List<String>> foundationsMap = new LinkedHashMap<>();
+
 
             for (Fields field : Fields.values()) {
                 switch (field) {
@@ -80,17 +83,33 @@ public class TreeBuilder implements ITreeBuilder {
                         }
                     }
                     case INTERIOR_WALL, EXTERIOR_WALL -> {
+                        List<String> wallType = (List<String>) get(field.getFieldName() + "Type", pdfData);
+                        List<String> wallRValue = (List<String>) get(field.getFieldName() + "RValue", pdfData);
                         String parentTitle = field.getParent();
-                        String typeTitle = field.getTitle();
-                        String type = get(field.getFieldName() + "Type", pdfData) == null ?
-                                " " : get(field.getFieldName() + "Type", pdfData).toString();
+                        if (wallType.size() == wallRValue.size()) {
+                            for (int i = 0; i < wallType.size(); i++) {
+                                int num = i + 1;
 
-                        String rValueTitle = field.getFieldName().replace("type", "") + "R-Value RSI";
-                        String rValue = get(field.getFieldName() + "RValue", pdfData) == null ?
-                                " " : get(field.getFieldName() + "RValue", pdfData).toString();
+                                String typeTitle = field.getTitle() + " " + " Type" + " - " + num;
+                                String type = wallType.get(i);
 
-                        writeTree(parentTitle, typeTitle, type, fileIndex);
-                        writeTree(parentTitle, rValueTitle, rValue, fileIndex);
+                                String rValueTitle = field.getTitle()  + " " + " R-Value RSI" + " - " + num;
+                                String rValue = wallRValue.get(i);
+                                if (foundationsMap.containsKey(String.valueOf(i))) {
+                                    List<String> values = new ArrayList<>(foundationsMap.get(String.valueOf(i)));
+                                    values.add(typeTitle);
+                                    values.add(type);
+                                    values.add(rValueTitle);
+                                    values.add(rValue);
+                                    foundationsMap.put(String.valueOf(i), values);
+                                } else {
+                                    foundationsMap.put(String.valueOf(i), Arrays.asList(typeTitle, type, rValueTitle, rValue));
+                                }
+                            }
+                        }
+                        // clean memory
+                        wallType = null;
+                        wallRValue = null;
                     }
                     case ADDED_TO_SLAB -> {
                         List<String> addedToSlab = (List<String>) get(field.getFieldName(), pdfData);
@@ -102,10 +121,39 @@ public class TreeBuilder implements ITreeBuilder {
                             int num = i + 1;
                             String title = field.getTitle() + " - " + num;
                             String value = addedToSlab.get(i);
-                            writeTree(parentTitle, title, value, fileIndex);
+                            if (foundationsMap.containsKey(String.valueOf(i))) {
+                                List<String> values = new ArrayList<>(foundationsMap.get(String.valueOf(i)));
+                                values.add(title);
+                                values.add(value);
+                                foundationsMap.put(String.valueOf(i), values);
+                            } else {
+                                foundationsMap.put(String.valueOf(i), Arrays.asList(title, value));
+                            }
                         }
                         // clean memory
                         addedToSlab = null;
+                    }
+                    case FLOORS_ABOVE_FOUND -> {
+                        List<String> floorsAboveFound = (List<String>) get(field.getFieldName(), pdfData);
+                        if (floorsAboveFound == null || floorsAboveFound.isEmpty()) {
+                            break;
+                        }
+                        String parentTitle = field.getParent();
+                        for (int i = 0; i < floorsAboveFound.size(); i++) {
+                            int num = i + 1;
+                            String title = field.getTitle() + " - " + num;
+                            String value = floorsAboveFound.get(i);
+                            if (foundationsMap.containsKey(String.valueOf(i))) {
+                                List<String> values = new ArrayList<>(foundationsMap.get(String.valueOf(i)));
+                                values.add(title);
+                                values.add(value);
+                                foundationsMap.put(String.valueOf(i), values);
+                            } else {
+                                foundationsMap.put(String.valueOf(i), Arrays.asList(title, value));
+                            }
+                        }
+                        // clean memory
+                        floorsAboveFound = null;
                     }
                     case WINDOW_CHARACTERISTICS -> {
                         HashMap<String, List<List<String>>> windowCharacteristics = pdfData.getWindowCharacteristics();
@@ -299,13 +347,6 @@ public class TreeBuilder implements ITreeBuilder {
                 }
             }
 
-            // add the occupants
-//            if (!tree.containsData("OCCUPANTS")) {
-//
-////            }
-//            tree.getNode("GENERAL HOUSE CHARACTERISTICS").insert(tempOccupants,
-//                    tree.getNode("GENERAL HOUSE CHARACTERISTICS").getIndex("Year House Built") + 1);
-
             // add the window characteristics
             if (tempWindowChar != null && tempWindowChar.getChildren() != null) {
                 for (TreeNode<Object> child : tempWindowChar.getChildren()) {
@@ -316,6 +357,30 @@ public class TreeBuilder implements ITreeBuilder {
             if (tempBuildingParam != null && tempBuildingParam.getChildren() != null) {
                 for (TreeNode<Object> child : tempBuildingParam.getChildren()) {
                     this.tree.insert(child, this.tree.getIndex("Above grade fraction of") + 1);
+                }
+            }
+
+            // write foundationsMap to temp tree
+            if (!foundationsMap.isEmpty()) {
+                foundationsMap.forEach((key, values) -> {
+                    String parentTitle = "Foundations";
+                    for (int i = 0; i < values.size(); i += 2) {
+                        String title = values.get(i);
+                        String value = values.get(i + 1);
+                        writeTree(tempFoundations, parentTitle, title, value, fileIndex);
+                    }
+                });
+            }
+            //add foundations
+            if (tempFoundations != null && tempFoundations.getChildren() != null) {
+                int index = -1;
+                index = Math.max(this.tree.getIndex("Building Parameter Details - Doors"), index);
+                index = Math.max(this.tree.getIndex("Building Parameter Details - Exposed Floors"), index);
+                index = Math.max(this.tree.getIndex("Building Parameter Details - Main Wall Components"), index);
+                index = Math.max(this.tree.getIndex("Building Parameter Details - Ceiling Components"), index);
+
+                for (TreeNode<Object> child : tempFoundations.getChildren()) {
+                    this.tree.insert(child, index + 1);
                 }
             }
             // add the building assembly details

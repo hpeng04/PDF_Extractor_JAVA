@@ -68,7 +68,7 @@ public class DataExtractor {
         // check if there are multiple files
         for (Word w : pagesWithInfo.get(0)) {
             String s = w.getText();
-            if (s.contains("Page")) {
+            if (s.contains("Page") || s.contains("page")) {
                 Pattern pattern = Pattern.compile("\\d{2}");
                 Matcher matcher = pattern.matcher(s);
                 if (matcher.find()) {
@@ -327,70 +327,7 @@ public class DataExtractor {
                             // clean memory
                             value = null;
                         }
-                        case INTERIOR_WALL -> {
-                            for (int i = 0; i < content.size(); i++) {
-                                String line = content.get(i);
-                                if (line.contains(field.getKeyword())) {
-                                    if (content_confidence.get(i) < confThreshold) lowConfContent.add(field.getTitle() + " R-Value");
-                                    Pattern typePattern = Pattern.compile("type:(.*?)R-(value|Value)");
-                                    Matcher typeMatcher = typePattern.matcher(line);
-                                    if (typeMatcher.find()) {
-                                        data.setInteriorWallType(typeMatcher.group(1));
-                                    }
-                                    String[] parts = line.split("\\s");
-                                    for (int j = parts.length - 1; j >= 0; j--) {
-                                        Pattern rsiPattern = Pattern.compile("\\d+(\\.\\d+)?");
-                                        Matcher rsiMatcher = rsiPattern.matcher(parts[j]);
-
-                                        if (rsiMatcher.find()) {
-                                            Matcher decimalMatcher = Pattern.compile("\\d+\\.\\d{2}").matcher(rsiMatcher.group());
-                                            float originalRSI = decimalMatcher.find() ?
-                                                    Float.parseFloat(rsiMatcher.group()) :
-                                                    Float.parseFloat(rsiMatcher.group()) / 100f;
-                                            float rsi = isSIUnit() ?
-                                                    originalRSI :
-                                                    ConversionType.THERMAL_RESISTANCE.convert(originalRSI);
-                                            data.setInteriorWallRValue(String.format("%.2f", rsi));
-                                            break;
-                                        }
-                                    }
-                                    break;
-
-                                }
-                            }
-                        }
-                        case EXTERIOR_WALL -> {
-                            for (int i = 0; i < content.size(); i++) {
-                                String line = content.get(i);
-                                if (line.contains(field.getKeyword())) {
-                                    if (content_confidence.get(i) < confThreshold) lowConfContent.add(field.getTitle() + " R-Value");
-                                    Pattern typePattern = Pattern.compile("type:(.*?)R-(value|Value)");
-                                    Matcher typeMatcher = typePattern.matcher(line);
-                                    if (typeMatcher.find()) {
-                                        data.setExteriorWallType(typeMatcher.group(1));
-                                    }
-                                    // R-VALUE
-                                    String[] parts = line.split("\\s");
-                                    for (int j = parts.length - 1; j >= 0; j--) {
-                                        Pattern rsiPattern = Pattern.compile("\\d+(\\.\\d+)?");
-                                        Matcher rsiMatcher = rsiPattern.matcher(parts[j]);
-
-                                        if (rsiMatcher.find()) {
-                                            Matcher decimalMatcher = Pattern.compile("\\d+\\.\\d{2}").matcher(rsiMatcher.group());
-                                            float originalRSI = decimalMatcher.find() ?
-                                                    Float.parseFloat(rsiMatcher.group()) :
-                                                    Float.parseFloat(rsiMatcher.group()) / 100f;
-                                            float rsi = isSIUnit() ?
-                                                    originalRSI :
-                                                    ConversionType.THERMAL_RESISTANCE.convert(originalRSI);
-                                            data.setExteriorWallRValue(String.format("%.2f", rsi));
-                                            break;
-                                        }
-                                    }
-                                    break;
-                                }
-                            }
-                        }
+                        case INTERIOR_WALL, EXTERIOR_WALL -> processWallData(field, content, content_confidence, data);
                         case ADDED_TO_SLAB -> {
                             List<String> addToSlabRvalueList = new ArrayList<>();
                             for (int i = 0; i < content.size(); i++) {
@@ -399,45 +336,28 @@ public class DataExtractor {
                                     if (line.contains("FOUNDATION CODE SCHEDULE") || line.contains("BUILDING ASSEMBLY DETAILS")) break;
                                     if (content_confidence.get(i) < confThreshold) lowConfContent.add(field.getTitle() + " R-Value");
                                     Pattern pattern = Pattern.compile("\\d+(\\.\\d+)?");
-                                    Matcher matcher = pattern.matcher(line);
-                                    if (matcher.find()) {
-                                        Matcher decimalMatcher = Pattern.compile("\\d+\\.\\d{2}").matcher(matcher.group());
-                                        float originalRSI = decimalMatcher.find() ?
-                                                Float.parseFloat(matcher.group()) :
-                                                Float.parseFloat(matcher.group()) / 100f;
-                                        float rsi = isSIUnit() ?
-                                                originalRSI :
-                                                ConversionType.THERMAL_RESISTANCE.convert(originalRSI);
-                                        addToSlabRvalueList.add(String.format("%.2f", rsi));
-                                    }
+                                    findRValue(addToSlabRvalueList, line, pattern);
                                 }
                             }
                             data.setAddedToSlab(addToSlabRvalueList);
                         }
                         case FLOORS_ABOVE_FOUND -> {
+                            List<String> rValueList = new ArrayList<>();
                             for (int i = 1; i < content.size(); i++) {
                                 String s = content.get(i);
+                                if (s.contains("FOUNDATION CODE SCHEDULE") || s.contains("BUILDING ASSEMBLY DETAILS")) break;
                                 if (s.matches("Found\\.:") || s.matches("Found\\.:\n")) {
                                     String line = content.get(i - 1);
+                                    if (line.contains("Page") || line.contains("page")) {
+                                        line = content.get(i - 2);
+                                        if (content_confidence.get(i - 2) < confThreshold) lowConfContent.add(field.getTitle() + " R-Value");
+                                    }
                                     if (content_confidence.get(i - 1) < confThreshold) lowConfContent.add(field.getTitle() + " R-Value");
                                     Pattern pattern = Pattern.compile("(\\d+(\\.\\d{2})?)");
-                                    String[] parts = line.split("\\s");
-                                    for (int j = parts.length - 1; j >= 0; j--) {
-                                        Matcher matcher = pattern.matcher(parts[j]);
-                                        if (matcher.find()) {
-                                            Matcher decimalMatcher = Pattern.compile("\\d+\\.\\d{2}").matcher(matcher.group());
-                                            float originalRSI = decimalMatcher.find() ?
-                                                    Float.parseFloat(matcher.group()) :
-                                                    Float.parseFloat(matcher.group()) / 100f;
-                                            float rsi = isSIUnit() ?
-                                                    originalRSI :
-                                                    ConversionType.THERMAL_RESISTANCE.convert(originalRSI);
-                                            data.setFloorsAboveFound(String.format("%.2f", rsi));
-                                            break;
-                                        }
-                                    }
+                                    findRValue(rValueList, line, pattern);
                                 }
                             }
+                            data.setFloorsAboveFound(rValueList);
                         }
                         case BUILDING_ASSEMBLY_DETAILS -> {
                             HashMap<String, List<String>> buildingAssemblyDetails = new HashMap<>();
@@ -742,6 +662,9 @@ public class DataExtractor {
                         case WATER_HEATING_EQUIPMENT -> {
                             for (int i = 1; i < content.size(); i++) {
                                 String s1 = content.get(i-1);
+                                if (s1.contains("Page") || s1.contains("page")) {
+                                    s1 = content.get(i-2);
+                                }
                                 String s2 = content.get(i);
                                 if (s2.contains("Equipment:") && s1.contains("Water Heating")) {
                                     String s = s1.replace("Water Heating", "").replace("\n", "")
@@ -755,7 +678,7 @@ public class DataExtractor {
                             String end = "SPACE HEATING SYSTEM PERFORMANCE";
                             String start = "MONTHLY ESTIMATED ENERGY CONSUMPTION BY DEVICE";
                             Pattern pattern = Pattern.compile("(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Ann)");
-                            List<String> list = findAnnualTable(content, content_confidence, start, end, pattern);
+                            List<String> list = findAnnualTable(content, start, end, pattern);
                             HashMap<String, List<String>> monthlyData = new HashMap<>();
 
                             for (String line : list) {
@@ -839,7 +762,7 @@ public class DataExtractor {
                             String end = "MONTHLY ESTIMATED ENERGY CONSUMPTION BY DEVICE";
                             String start = "ESTIMATED FUEL COSTS (Dollars)";
                             Pattern pattern = Pattern.compile("(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Ann)");
-                            List<String> list = findAnnualTable(content, content_confidence, start, end, pattern);
+                            List<String> list = findAnnualTable(content, start, end, pattern);
                             HashMap<String, List<String>> monthlyData = new HashMap<>();
 
                             for (String line : list) {
@@ -1055,7 +978,53 @@ public class DataExtractor {
         return data;
     }
 
-    private  List<String> findAnnualTable(List<String> content, List<Float> content_confidence, String startMarker, String endMarker, Pattern pattern) {
+    private void findRValue(List<String> rValueList, String line, Pattern pattern) {
+
+        String[] parts = line.split("\\s");
+        for (int j = parts.length - 1; j >= 0; j--) {
+            Matcher matcher = pattern.matcher(parts[j]);
+            if (matcher.find()) {
+                Matcher decimalMatcher = Pattern.compile("\\d+\\.\\d{2}").matcher(matcher.group());
+                float originalRSI = decimalMatcher.find() ?
+                        Float.parseFloat(matcher.group()) :
+                        Float.parseFloat(matcher.group()) / 100f;
+                float rsi = isSIUnit() ?
+                        originalRSI :
+                        ConversionType.THERMAL_RESISTANCE.convert(originalRSI);
+                rValueList.add(String.format("%.2f", rsi));
+                break;
+            }
+        }
+    }
+
+    private void processWallData(Fields field, List<String> content, List<Float> content_confidence, PdfData data) {
+        List<String> typeList = new ArrayList<>();
+        List<String> rValueList = new ArrayList<>();
+        for (int i = 0; i < content.size(); i++) {
+            String line = content.get(i);
+            if (line.contains(field.getKeyword())) {
+                if (line.contains("FOUNDATION CODE SCHEDULE") || line.contains("BUILDING ASSEMBLY DETAILS")) break;
+                if (content_confidence.get(i) < confThreshold) lowConfContent.add(field.getTitle() + " R-Value");
+                Pattern typePattern = Pattern.compile("type:(.*?)R-(value|Value)");
+                Matcher typeMatcher = typePattern.matcher(line);
+                if (typeMatcher.find()) {
+                    typeList.add(typeMatcher.group(1));
+                }
+                Pattern rsiPattern = Pattern.compile("\\d+(\\.\\d+)?");
+                // R-VALUE
+                findRValue(rValueList, line, rsiPattern);
+            }
+        }
+        if (field == Fields.INTERIOR_WALL) {
+            data.setInteriorWallType(typeList);
+            data.setInteriorWallRValue(rValueList);
+        } else if (field == Fields.EXTERIOR_WALL) {
+            data.setExteriorWallType(typeList);
+            data.setExteriorWallRValue(rValueList);
+        }
+    }
+
+    private  List<String> findAnnualTable(List<String> content, String startMarker, String endMarker, Pattern pattern) {
         List<String> list = new ArrayList<>();
         boolean inSection = false;
 
@@ -1074,8 +1043,6 @@ public class DataExtractor {
                 }
             }
         }
-
-
         return list;
     }
 
@@ -1115,7 +1082,7 @@ public class DataExtractor {
                 continue;
             }
             if (foundSectionStart) {
-                if (line.contains("Page")) continue;
+                if (line.contains("Page") || line.contains("page")) continue;
                 if (line.contains(field.getKeyword()) || line.contains(keywordImperial)) {
                     if (content_confidence.get(i) < confThreshold) lowConfContent.add(line);
                     Matcher matcher = pattern.matcher(line);
@@ -1144,7 +1111,7 @@ public class DataExtractor {
 
         for (int i = 0; i < content.size(); i++) {
             String line = content.get(i);
-            if (line.contains("Page")) continue;
+            if (line.contains("Page") || line.contains("page")) continue;
             if (line.contains(start)) {
                 foundSectionStart = true;
                 continue;
@@ -1197,32 +1164,39 @@ public class DataExtractor {
         List<List<String>> components = new ArrayList<>();
         boolean foundStartMarker = false;
 
+        label:
         for (int i = 0; i < content.size(); i++) {
             String line = content.get(i);
-            if (line.contains("Page")) continue;
+            if (line.contains("Page") || line.contains("page")) continue;
             if (line.startsWith(sectionStart)) {
                 foundStartMarker = true;
                 continue;
             }
             if (foundStartMarker) {
-                if (sectionStart.equals("MAIN WALL COMPONENTS")) {
-                    Pattern endPattern = Pattern.compile("(EXPOSED FLOORS|WALL CODE SCHEDULE|Indicates)");
-                    Matcher endMatcher = endPattern.matcher(line);
-                    if (endMatcher.find()) break;
-                } else if (sectionStart.equals("EXPOSED FLOORS")) {
-                    Pattern endPattern = Pattern.compile("(DOORS|EXPOSED FLOOR SCHEDULE|Indicates)");
-                    Matcher endMatcher = endPattern.matcher(line);
-                    if (endMatcher.find()) break;
-                } else if (sectionStart.equals("CEILING COMPONENTS")) {
-                    Pattern endPattern = Pattern.compile("(MAIN WALL COMPONENTS|CEILING CODE SCHEDULE|Indicates)");
-                    Matcher endMatcher = endPattern.matcher(line);
-                    if (endMatcher.find()) break;
-                } else if (sectionStart.equals("DOORS")) {
-                    Pattern endPattern = Pattern.compile("(FOUNDATIONS|DOOR CODE SCHEDULE|Indicates)");
-                    Matcher endMatcher = endPattern.matcher(line);
-                    if (endMatcher.find()) break;
-                } else {
-                    if (line.contains(end)) break;
+                switch (sectionStart) {
+                    case "MAIN WALL COMPONENTS" -> {
+                        Pattern endPattern = Pattern.compile("(EXPOSED FLOORS|WALL CODE SCHEDULE|Indicates)");
+                        Matcher endMatcher = endPattern.matcher(line);
+                        if (endMatcher.find()) break label;
+                    }
+                    case "EXPOSED FLOORS" -> {
+                        Pattern endPattern = Pattern.compile("(DOORS|EXPOSED FLOOR SCHEDULE|Indicates)");
+                        Matcher endMatcher = endPattern.matcher(line);
+                        if (endMatcher.find()) break label;
+                    }
+                    case "CEILING COMPONENTS" -> {
+                        Pattern endPattern = Pattern.compile("(MAIN WALL COMPONENTS|CEILING CODE SCHEDULE|Indicates)");
+                        Matcher endMatcher = endPattern.matcher(line);
+                        if (endMatcher.find()) break label;
+                    }
+                    case "DOORS" -> {
+                        Pattern endPattern = Pattern.compile("(FOUNDATIONS|DOOR CODE SCHEDULE|Indicates)");
+                        Matcher endMatcher = endPattern.matcher(line);
+                        if (endMatcher.find()) break label;
+                    }
+                    default -> {
+                        if (line.contains(end)) break label;
+                    }
                 }
 
                 Matcher matcher = pattern.matcher(line);

@@ -23,6 +23,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PdfSelectorGUI extends JFrame {
     private final int WIDTH = 700;
@@ -164,9 +165,9 @@ public class PdfSelectorGUI extends JFrame {
 
             ProgressDialog progressDialog = new ProgressDialog(null, "Processing...");
             progressDialog.showDialog();
-
+            AtomicInteger progress = new AtomicInteger(0);
             File finalFileToSave = fileToSave;
-            SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            SwingWorker<Void, Integer> worker = new SwingWorker<>() {
                 @Override
                 protected Void doInBackground() {
                     Workbook workbook = null;
@@ -192,6 +193,7 @@ public class PdfSelectorGUI extends JFrame {
                         JOptionPane.showMessageDialog(null, "Error creating Excel workbook.", "Error", JOptionPane.ERROR_MESSAGE);
                         return null;
                     }
+                    progressDialog.updateProgress(progress.addAndGet(5));
 
                     // Check if the "Data" sheet exists, create if it doesn't
                     if (workbook.getSheetIndex("Data") != -1) {
@@ -203,18 +205,19 @@ public class PdfSelectorGUI extends JFrame {
                         writer.writeBasic(workbook);
                     }
 
-
                     typeSelection.forEach((pdfName, fileType) -> {
+                        progressDialog.updateProgress(progress.get() + 5);
                         DataExtractor extractor = new DataExtractor();
                         extractor.extractData(new File(pdfName));
                         // 1st data
                         try {
                             pdfList.add(extractor.processData1(extractor));
+                            progressDialog.updateProgress(progress.addAndGet(20 / typeSelection.size()));
                         } catch (Exception e) {
                             JOptionPane.showMessageDialog(null, "Error extracting data." +"\nError:"+ e, "Error", JOptionPane.ERROR_MESSAGE);
                         }
                         fileTypeList.add(fileType);
-                        if (extractor.getLowConfContent().size() > 0) {
+                        if (!extractor.getLowConfContent().isEmpty()) {
                             lowConfList.add("-------------------\n" + pdfName + "\n");
                             lowConfList.addAll(extractor.getLowConfContent());
                             // reset the lowConfContent list to avoid duplication
@@ -223,22 +226,27 @@ public class PdfSelectorGUI extends JFrame {
 
                         // Check if the PDF contains multiple files
                         if (extractor.isMultipleFiles()) {
+                            progressDialog.updateProgress(progress.addAndGet(20 / typeSelection.size()));
                             try {
                                 pdfList.add(extractor.processData2(extractor));
+
                             } catch (Exception e) {
                                 JOptionPane.showMessageDialog(null, "Error extracting data." +"\nError:"+ e, "Error", JOptionPane.ERROR_MESSAGE);
                             }
                             fileTypeList.add("N/A");
-                            if (extractor.getLowConfContent().size() > 0) {
+                            if (!extractor.getLowConfContent().isEmpty()) {
                                 lowConfList.add("-------------------\n" + pdfName + "\n");
                                 lowConfList.addAll(extractor.getLowConfContent());
                             }
+                            progressDialog.updateProgress(progress.addAndGet(20 / typeSelection.size()));
+                        } else {
+                            progressDialog.updateProgress(progress.addAndGet(40 / typeSelection.size()));
                         }
-
                     });
 
                     try {
                         treeBuilder.buildTreeFromPDF(pdfList, fileTypeList);
+//                        progressDialog.updateProgress(90);
                     } catch (Exception e) {
                         JOptionPane.showMessageDialog(null, "Error Writing data to Tree." +"\nError:"+ e, "Error", JOptionPane.ERROR_MESSAGE);
 
@@ -246,7 +254,7 @@ public class PdfSelectorGUI extends JFrame {
                     // clean memory
                     pdfList.clear();
                     System.gc();
-
+                    progressDialog.updateProgress(95);
                     try {
                         writer.writeToExcel(sheet, treeBuilder);
                     } catch (Exception e) {
@@ -254,7 +262,7 @@ public class PdfSelectorGUI extends JFrame {
                     }
                     treeBuilder = null;
 
-                    if (lowConfList.size() > 0) {
+                    if (!lowConfList.isEmpty()) {
                         String lowConfFilePath = finalFileToSave.getParent() + "/LowConfContent.txt";
                         Path path = Paths.get(lowConfFilePath);
                         try {
@@ -265,11 +273,11 @@ public class PdfSelectorGUI extends JFrame {
                     }
 
 
-
                     // Save the workbook
                     try (FileOutputStream out = new FileOutputStream(finalFileToSave)) {
                         workbook.write(out);
-                        if (lowConfList.size() > 0) {
+                        progressDialog.updateProgress(100);
+                        if (!lowConfList.isEmpty()) {
                             JOptionPane.showMessageDialog(null, "Excel file saved! However, " +
                                     "there are low confidence contents in the PDFs. Please check the LowConfContent.txt file for details.");
                         } else {
@@ -295,7 +303,6 @@ public class PdfSelectorGUI extends JFrame {
                 @Override
                 protected void done() {
                     progressDialog.closeDialog();
-
                 }
             };
             worker.execute();
