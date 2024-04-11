@@ -1,5 +1,6 @@
 package service;
 
+import app.ProgressDialog;
 import lombok.Setter;
 import model.Fields;
 import model.PdfData;
@@ -16,6 +17,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -48,17 +50,17 @@ public class DataExtractor {
 
 
 
-    public void extractData(File file) {
+    public void extractData(File file, ProgressDialog dialog, AtomicInteger progress, int numFiles) {
         Map<Integer, BufferedImage> imgs;
         try {
-            imgs = convert(file);
+            imgs = convert(file, dialog, progress, numFiles);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
         PdfReader pdfReader1 = new PdfReader();
         try {
-            pdfReader1.setAllContent(imgs);
+            pdfReader1.setAllContent(imgs, dialog, progress, numFiles);
         } catch (TesseractException e) {
             throw new RuntimeException(e);
         }

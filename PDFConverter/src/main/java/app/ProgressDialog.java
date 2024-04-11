@@ -24,10 +24,10 @@ public class ProgressDialog extends JDialog {
         SwingUtilities.invokeLater(() -> setVisible(true));
     }
 
-    public void updateProgress(int value) {
+    public void updateProgress(double value) {
         SwingUtilities.invokeLater(() -> {
-            progressBar.setValue(value);
-            String message = String.format("%d%%", value);
+            progressBar.setValue((int) value);
+            String message = String.format("%d%%", (int) value);
             progressBar.setString(message); // Update the displayed string
         });
     }

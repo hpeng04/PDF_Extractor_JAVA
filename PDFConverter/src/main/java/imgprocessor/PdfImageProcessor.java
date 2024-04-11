@@ -1,5 +1,6 @@
 package imgprocessor;
 
+import app.ProgressDialog;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
@@ -9,6 +10,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PdfImageProcessor {
 
@@ -26,16 +28,20 @@ public class PdfImageProcessor {
         return cachedImages;
     }
 
-    public static Map<Integer, BufferedImage> convert(File file) throws IOException {
+    public static Map<Integer, BufferedImage> convert(File file, ProgressDialog dialog, AtomicInteger progress, int numFiles) throws IOException {
         Map<Integer, BufferedImage> cachedImages = new HashMap<>();
 
         try (PDDocument document = Loader.loadPDF(file)) {
             PDFRenderer pdfRenderer = new PDFRenderer(document);
 
+            double p = progress.get();
             for (int page = 0; page < document.getNumberOfPages(); page++) {
                 BufferedImage img = cropPage(pdfRenderer, page);
                 cachedImages.put(page, img);
+                p += 50.0 / (numFiles * document.getNumberOfPages());
+                dialog.updateProgress(p);
             }
+            progress.set((int) p);
         }
         return cachedImages;
     }

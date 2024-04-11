@@ -166,6 +166,7 @@ public class PdfSelectorGUI extends JFrame {
             ProgressDialog progressDialog = new ProgressDialog(null, "Processing...");
             progressDialog.showDialog();
             AtomicInteger progress = new AtomicInteger(0);
+
             File finalFileToSave = fileToSave;
             SwingWorker<Void, Integer> worker = new SwingWorker<>() {
                 @Override
@@ -193,7 +194,6 @@ public class PdfSelectorGUI extends JFrame {
                         JOptionPane.showMessageDialog(null, "Error creating Excel workbook.", "Error", JOptionPane.ERROR_MESSAGE);
                         return null;
                     }
-                    progressDialog.updateProgress(progress.addAndGet(5));
 
                     // Check if the "Data" sheet exists, create if it doesn't
                     if (workbook.getSheetIndex("Data") != -1) {
@@ -206,13 +206,11 @@ public class PdfSelectorGUI extends JFrame {
                     }
 
                     typeSelection.forEach((pdfName, fileType) -> {
-                        progressDialog.updateProgress(progress.get() + 5);
                         DataExtractor extractor = new DataExtractor();
-                        extractor.extractData(new File(pdfName));
+                        extractor.extractData(new File(pdfName), progressDialog, progress, typeSelection.size());
                         // 1st data
                         try {
                             pdfList.add(extractor.processData1(extractor));
-                            progressDialog.updateProgress(progress.addAndGet(20 / typeSelection.size()));
                         } catch (Exception e) {
                             JOptionPane.showMessageDialog(null, "Error extracting data." +"\nError:"+ e, "Error", JOptionPane.ERROR_MESSAGE);
                         }
@@ -226,7 +224,6 @@ public class PdfSelectorGUI extends JFrame {
 
                         // Check if the PDF contains multiple files
                         if (extractor.isMultipleFiles()) {
-                            progressDialog.updateProgress(progress.addAndGet(20 / typeSelection.size()));
                             try {
                                 pdfList.add(extractor.processData2(extractor));
 
@@ -238,15 +235,12 @@ public class PdfSelectorGUI extends JFrame {
                                 lowConfList.add("-------------------\n" + pdfName + "\n");
                                 lowConfList.addAll(extractor.getLowConfContent());
                             }
-                            progressDialog.updateProgress(progress.addAndGet(20 / typeSelection.size()));
-                        } else {
-                            progressDialog.updateProgress(progress.addAndGet(40 / typeSelection.size()));
                         }
                     });
 
                     try {
                         treeBuilder.buildTreeFromPDF(pdfList, fileTypeList);
-//                        progressDialog.updateProgress(90);
+                        progressDialog.updateProgress(90);
                     } catch (Exception e) {
                         JOptionPane.showMessageDialog(null, "Error Writing data to Tree." +"\nError:"+ e, "Error", JOptionPane.ERROR_MESSAGE);
 

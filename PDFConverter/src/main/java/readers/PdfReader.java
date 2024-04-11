@@ -1,8 +1,10 @@
 package readers;
 
+import app.ProgressDialog;
 import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.TesseractException;
 import net.sourceforge.tess4j.Word;
+import utils.AtomicDoubleBackedByAtomicLong;
 
 import java.awt.image.BufferedImage;
 import java.util.List;
@@ -11,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PdfReader extends Reader {
     private final int TEXT_LINE = 2;
@@ -22,19 +25,24 @@ public class PdfReader extends Reader {
         super();
     }
 
-    public void setAllContent(Map<Integer, BufferedImage> imgs) throws TesseractException {
+    public void setAllContent(Map<Integer, BufferedImage> imgs, ProgressDialog dialog, AtomicInteger progress, int numFiles) throws TesseractException {
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         ConcurrentHashMap<Integer, List<Word>> resultsWithDetail = new ConcurrentHashMap<>();
 
+        AtomicDoubleBackedByAtomicLong p = new AtomicDoubleBackedByAtomicLong(progress.get());
         try {
             imgs.forEach((key, value) -> executor.submit(() -> {
                 ITesseract reader = new Reader().tessReader;
                 List<Word> ocrResultDetailed = reader.getWords(value, TEXT_LINE);
                 resultsWithDetail.put(key, ocrResultDetailed);
+                p.addAndGet(30.0 / (numFiles * imgs.size()));
+                dialog.updateProgress(p.get());
             }));
 
             executor.shutdown();
             executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+
+            progress.set((int) p.get());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt(); // Preserve the interrupt
         } finally {
