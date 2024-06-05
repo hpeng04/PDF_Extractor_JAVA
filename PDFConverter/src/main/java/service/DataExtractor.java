@@ -191,6 +191,18 @@ public class DataExtractor {
                                 }
                             }
                         }
+                        case NIGHTIME_SETBACK_DURATION -> {
+                            for (int i = 0; i < content.size(); i++) {
+                                String line = content.get(i);
+                                if (line.contains(field.getKeyword())) {
+                                    if (content_confidence.get(i) < confThreshold) lowConfContent.add(field.getTitle());
+                                    String value = line.replace(field.getKeyword(), "").replace("\n", "").stripLeading();
+
+                                    data.setNightimeSetbackDuration(value.replace("Duration:", "").stripLeading());
+                                    break;
+                                }
+                            }
+                        }
                         case TEMP_RISE_FROM -> {
                             for (int i = 0; i < content.size(); i++) {
                                 String line = content.get(i);
@@ -677,8 +689,8 @@ public class DataExtractor {
                             }
                         }
                         case SPACE_HEATING_SYSTEM_PERFORMANCE -> {
-                            String end = "SPACE HEATING SYSTEM PERFORMANCE";
-                            String start = "MONTHLY ESTIMATED ENERGY CONSUMPTION BY DEVICE";
+                            String start = "SPACE HEATING SYSTEM PERFORMANCE";
+                            String end = "Ann";
                             Pattern pattern = Pattern.compile("(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Ann)");
                             List<String> list = findAnnualTable(content, start, end, pattern);
                             HashMap<String, List<String>> monthlyData = new HashMap<>();
@@ -761,8 +773,8 @@ public class DataExtractor {
                             monthlyData = null;
                         }
                         case MONTHLY_ESTIMATED_ENERGY_CONSUMPTION_BY_DEVICE -> {
-                            String end = "MONTHLY ESTIMATED ENERGY CONSUMPTION BY DEVICE";
-                            String start = "ESTIMATED FUEL COSTS (Dollars)";
+                            String start = "MONTHLY ESTIMATED ENERGY CONSUMPTION BY DEVICE";
+                            String end = "Ann";
                             Pattern pattern = Pattern.compile("(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Ann)");
                             List<String> list = findAnnualTable(content, start, end, pattern);
                             HashMap<String, List<String>> monthlyData = new HashMap<>();
@@ -784,6 +796,7 @@ public class DataExtractor {
                                     // or, the next number could be .4 (ie. 123 .4), both cases, combine the two parts to get the actual number,
                                     // if not, assume the current number is a whole number, and divide it by 10^decimalPlaces (ie. 1234)
                                     float value1 = Float.parseFloat(parts[i]);
+                                    float conf1 = content_confidence.get(i);
                                     if (!parts[i].contains(".")) {
                                         String original = parts[i];
                                         if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) { // case 123 4
@@ -937,7 +950,7 @@ public class DataExtractor {
                             }
                         }
                         /*
-                        Nightime Setback, Air Leakage Test Results, Air Distribution/circulation type,
+                        Air Leakage Test Results, Air Distribution/circulation type,
                         Air Distribution/circulation fan power, Operation schedule, Seasonal Heat Recovery Ventilator,
                          AFUE, High Speed Fan Power, PRIMARY Water Heating, Energy Factor, Heat Pump and Furnace Annual COP,
                         Primary System Seasonal Efficiency, Usable Internal Gains Fraction, Usable Solar Gains Fraction,
@@ -1028,23 +1041,28 @@ public class DataExtractor {
 
     private  List<String> findAnnualTable(List<String> content, String startMarker, String endMarker, Pattern pattern) {
         List<String> list = new ArrayList<>();
-        boolean inSection = false;
+        int start = 0;
 
         for (int i = content.size() - 1; i >= 0; i--) {
             String line = content.get(i);
             if (line.contains(startMarker)) {
-                inSection = true;
-                continue;
-            }
-            if (inSection && line.contains(endMarker)) break;
-
-            if (inSection) {
-                Matcher matcher = pattern.matcher(line);
-                if (matcher.find()) {
-                    list.add(0, line.replace("\n", ""));
-                }
+                start = i;
+                break;
             }
         }
+
+        for (int i = start; i < content.size(); i++) {
+            String line = content.get(i);
+
+            Matcher matcher = pattern.matcher(line);
+            if (matcher.find()) {
+                list.add(0, line.replace("\n", ""));
+            }
+
+            if (line.contains(endMarker)) break;
+        }
+
+        Collections.reverse(list);
         return list;
     }
 

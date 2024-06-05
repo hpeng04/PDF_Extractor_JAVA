@@ -1,3 +1,4 @@
+import app.ProgressDialog;
 import model.PdfData;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -8,6 +9,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Disabled
 public class treeTest {
@@ -31,11 +33,12 @@ public class treeTest {
 
 
         };
+        AtomicInteger progress = new AtomicInteger(0);
         List<PdfData> pdfList = new ArrayList<>();
         List<String> fileTypeList = new ArrayList<>();
         for (String path : filePath) {
             DataExtractor extractor = new DataExtractor();
-            extractor.extractData(new File(path));
+            extractor.extractData(new File(path), new ProgressDialog(null, "Processing..."), progress, filePath.length);
             try {
                 pdfList.add(extractor.processData1(extractor));
             } catch (Exception e) {

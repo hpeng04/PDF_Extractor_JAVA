@@ -28,10 +28,10 @@ public enum Fields {
     EXPOSED_FLOORS("Building Parameter Details - Exposed Floors", "Exposed Floors",
             "EXPOSED FLOORS", "exposedFloors", true),
     DOORS("Building Parameter Details - Doors", "Doors", "DOORS", "doors", true),
-    INTERIOR_WALL("Foundations", "Interior wall type", "Interior wall type:", "interiorWall", true), //TODO
-    EXTERIOR_WALL("Foundations", "Exterior wall type", "Exterior wall type:", "exteriorWall", true), //TODO
-    ADDED_TO_SLAB("Foundations", "Added to slab type R-Value RSI", "Added to slab", "addedToSlab", true), //TODO
-    FLOORS_ABOVE_FOUND("Foundations", "Floors Above Found. R-Value RSI", "Floors Above", "floorsAboveFound", true), //TODO
+    INTERIOR_WALL("Foundations", "Interior wall type", "Interior wall type:", "interiorWall", true),
+    EXTERIOR_WALL("Foundations", "Exterior wall type", "Exterior wall type:", "exteriorWall", true),
+    ADDED_TO_SLAB("Foundations", "Added to slab type R-Value RSI", "Added to slab", "addedToSlab", true),
+    FLOORS_ABOVE_FOUND("Foundations", "Floors Above Found. R-Value RSI", "Floors Above", "floorsAboveFound", true),
     // BUILDING ASSEMBLY DETAILS
     BUILDING_ASSEMBLY_DETAILS("Building Assembly Details", "Building Assembly Details",
             "BUILDING ASSEMBLY DETAILS", "buildingAssemblyDetails", true),
