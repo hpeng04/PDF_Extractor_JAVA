@@ -50,7 +50,7 @@ public class TreeBuilder implements ITreeBuilder {
         for (int j = 0; j < pdfDataList.size(); j++) {
             fileIndex++;
             PdfData pdfData = pdfDataList.get(j);
-            writeTree(" ", "Permit #", " ", fileIndex);
+            writeTree(" ", "Internal ID", " ", fileIndex);
             writeTree(" ", "File Type", fileType.get(j), fileIndex);
 
             TreeNode<Object> tempWindowChar = new TreeNode<>();

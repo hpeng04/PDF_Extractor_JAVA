@@ -26,16 +26,41 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 
+/**
+ * Utility class to enhance the resolution of images within PDF files using OpenCV.
+ * Contains a `main` method for testing, which loads a PDF, enhances its pages, and saves them as PNGs.
+ * Provides helper methods to convert between {@link BufferedImage} and OpenCV {@link Mat} objects.
+ */
 public class PDFResolutionEnhancer {
 
+    // Static fields for a default output directory (Desktop) - primarily for the test main method.
     private static final String userHome = System.getProperty("user.home");
     private static final File desktopDir = new File(userHome, "Desktop/");
 
+    /**
+     * Static initializer block to load the OpenCV native library.
+     * It attempts to find `opencv_java490.dll` (for Windows) in the classpath resources (e.g., in a `opencv/x64` folder).
+     * The exact path and library name might need adjustment based on the OS and OpenCV version.
+     */
     static {
+        // java.net.URL is used here to get the path of the resource.
         java.net.URL url = ClassLoader.getSystemResource("opencv/x64/opencv_java490.dll");
-        System.load(url.getPath());
+        if (url != null) {
+            // System.load expects an absolute path to the native library.
+            System.load(url.getPath().replaceFirst("^/", "")); // remove leading slash if present for windows paths
+        } else {
+            System.err.println("OpenCV native library not found. Please ensure opencv_java490.dll is in the classpath.");
+        }
     }
 
+    /**
+     * Main method for testing the PDF resolution enhancement.
+     * Reads a PDF named "50P-scan.pdf" from the Desktop, processes each page to enhance its resolution by a factor of 2,
+     * and saves the enhanced images as PNG files in a "Desktop/test_pngs/scanned" directory.
+     *
+     * @param args Command line arguments (not used).
+     * @throws IOException If an error occurs during file I/O or PDF processing.
+     */
     public static void main(String[] args) throws IOException {
 
         File inputFile = new File(desktopDir, "50P-scan.pdf");
@@ -65,20 +90,30 @@ public class PDFResolutionEnhancer {
             File outputfile = new File(desktopDir, "cropped_image_page_" + page + ".png");
             ImageIO.write(enhancedImage, "png", outputfile);
         }
-
+        document.close();
+        System.out.println("Processing complete.");
     }
 
+    /**
+     * Converts a {@link BufferedImage} to an OpenCV {@link Mat} object.
+     * Handles different BufferedImage types (TYPE_BYTE_GRAY, TYPE_3BYTE_BGR, TYPE_INT_RGB).
+     * If the type is not directly supported, it converts the image to TYPE_3BYTE_BGR first.
+     *
+     * @param bi The input {@link BufferedImage}.
+     * @return The corresponding OpenCV {@link Mat} object.
+     */
     private static Mat bufferedImageToMat(BufferedImage bi) {
         Mat mat;
-        if (bi.getType() == BufferedImage.TYPE_BYTE_GRAY) {
+        int type = bi.getType();
+        if (type == BufferedImage.TYPE_BYTE_GRAY) {
             mat = new Mat(bi.getHeight(), bi.getWidth(), CvType.CV_8UC1);
             byte[] data = ((DataBufferByte) bi.getRaster().getDataBuffer()).getData();
             mat.put(0, 0, data);
-        } else if (bi.getType() == BufferedImage.TYPE_3BYTE_BGR) {
+        } else if (type == BufferedImage.TYPE_3BYTE_BGR) {
             mat = new Mat(bi.getHeight(), bi.getWidth(), CvType.CV_8UC3);
             byte[] data = ((DataBufferByte) bi.getRaster().getDataBuffer()).getData();
             mat.put(0, 0, data);
-        } else if (bi.getType() == BufferedImage.TYPE_INT_RGB) {
+        } else if (type == BufferedImage.TYPE_INT_RGB) {
             mat = new Mat(bi.getHeight(), bi.getWidth(), CvType.CV_8UC3);
             int[] data = ((DataBufferInt) bi.getRaster().getDataBuffer()).getData();
             byte[] bytes = new byte[data.length * 3];
@@ -98,6 +133,13 @@ public class PDFResolutionEnhancer {
         return mat;
     }
 
+    /**
+     * Converts an OpenCV {@link Mat} object to a {@link BufferedImage}.
+     * Handles CV_8UC1 (grayscale) and CV_8UC3 (BGR color) Mat types.
+     *
+     * @param mat The input OpenCV {@link Mat} object.
+     * @return The corresponding {@link BufferedImage}, or null if the Mat type is not supported.
+     */
     private static BufferedImage matToBufferedImage(Mat mat) {
         if (mat.type() == CvType.CV_8UC1) {
             BufferedImage image = new BufferedImage(mat.cols(), mat.rows(), BufferedImage.TYPE_BYTE_GRAY);
@@ -112,6 +154,7 @@ public class PDFResolutionEnhancer {
             image.getRaster().setDataElements(0, 0, mat.cols(), mat.rows(), data);
             return image;
         }
+        System.err.println("Unsupported Mat type for conversion: " + mat.type());
         return null;
     }
 }
