@@ -93,36 +93,51 @@
         </dependency>
 
     </dependencies>
-
     <build>
         <plugins>
+            <!-- Lombok-compatible compiler plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>17</source> <!-- adjust to your Java version -->
+                    <target>17</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.32</version> <!-- or latest -->
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+            <!-- Regular JAR plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.2.0</version> <!-- Use latest version -->
+                <version>3.2.0</version>
                 <configuration>
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
                             <classpathPrefix>lib/</classpathPrefix>
-                            <mainClass>com.example.MainClass</mainClass> <!-- Specify your main class here -->
+                            <mainClass>com.example.MainClass</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
             </plugin>
 
-            <!-- If you also want to package all dependencies into a single JAR (creating an uber-jar),
-                 you can use the maven-assembly-plugin or the maven-shade-plugin. Here's an example
-                 using the maven-assembly-plugin: -->
-
+            <!-- Uber-JAR with dependencies -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.3.0</version> <!-- Use latest version -->
+                <version>3.3.0</version>
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>app.Main</mainClass> <!-- Specify your main class here -->
+                            <mainClass>app.Main</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
@@ -131,8 +146,8 @@
                 </configuration>
                 <executions>
                     <execution>
-                        <id>make-assembly</id> <!-- this is used for inheritance merges -->
-                        <phase>package</phase> <!-- bind to the packaging phase -->
+                        <id>make-assembly</id>
+                        <phase>package</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
@@ -148,6 +163,7 @@
             </resource>
         </resources>
     </build>
+
 
 
 
