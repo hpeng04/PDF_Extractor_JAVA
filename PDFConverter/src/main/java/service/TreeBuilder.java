@@ -50,7 +50,15 @@ public class TreeBuilder implements ITreeBuilder {
         for (int j = 0; j < pdfDataList.size(); j++) {
             fileIndex++;
             PdfData pdfData = pdfDataList.get(j);
-            writeTree(" ", "Permit #", " ", fileIndex);
+
+            // Generate Internal ID based on main wall 1 area and main floor 1 area
+            // Main Wall 1 Area: pdfData.getMainWallComponents().get(0).get(0)
+            // Main Floor 1 Area: pdfData.getExposedFloors().get(0).get(0)
+            String mainWall1Area = pdfData.getMainWallComponents().get(0).get(0);
+            String mainFloor1Area = pdfData.getExposedFloors().get(0).get(0);
+            String internalID = mainWall1Area + "-" + mainFloor1Area;
+
+            writeTree(" ", "Internal ID", internalID, fileIndex);
             writeTree(" ", "File Type", fileType.get(j), fileIndex);
 
             TreeNode<Object> tempWindowChar = new TreeNode<>();
