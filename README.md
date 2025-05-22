@@ -49,6 +49,7 @@ PDF_Extractor_JAVA/
 │       └── ... (other build artifacts)
 ├── config.properties                 # Application configuration file (e.g., last used directory)
 └── README.md                         # This file
+```
 
 ## Core Components and Workflow
 
