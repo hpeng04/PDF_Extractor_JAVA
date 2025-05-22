@@ -1,5 +1,3 @@
-\
-<!-- filepath: /Users/hhpeng/Documents/Work/PDF_Extractor_JAVA/README.md -->
 # PDF_Extractor_JAVA
 
 ## Project Overview
