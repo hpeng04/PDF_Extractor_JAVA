@@ -50,10 +50,7 @@ PDF_Extractor_JAVA/
 │       ├── PDFConverter-1.0.5-SNAPSHOT-jar-with-dependencies.jar # Executable JAR
 │       └── ... (other build artifacts)
 ├── config.properties                 # Application configuration file (e.g., last used directory)
-├── README.md                         # This file
-├── Test 3_metric_v11.11.pdf          # Example PDF files for testing
-└── Test 4_imperial.pdf               # Example PDF files for testing
-```
+└── README.md                         # This file
 
 ## Core Components and Workflow
 
