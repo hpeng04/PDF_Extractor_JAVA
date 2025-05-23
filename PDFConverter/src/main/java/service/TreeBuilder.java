@@ -58,7 +58,8 @@ public class TreeBuilder implements ITreeBuilder {
             String mainFloor1Area = pdfData.getExposedFloors().get(0).get(0);
             String internalID = mainWall1Area + "-" + mainFloor1Area;
 
-            writeTree(" ", "Internal ID", internalID, fileIndex);
+            writeTree(" ", "Report ID", internalID, fileIndex);
+            writeTree(" ", "Permit #", "", fileIndex);
             writeTree(" ", "File Type", fileType.get(j), fileIndex);
 
             TreeNode<Object> tempWindowChar = new TreeNode<>();
