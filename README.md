@@ -1,7 +1,18 @@
 # PDF_Extractor_JAVA
 
 ## Project Overview
-PDF_Extractor_JAVA is a Java application designed to extract data from PDF files and export it into an Excel format. It provides a graphical user interface (GUI) for users to select PDF files, specify the type of content within the PDFs (e.g., "Proposed", "Reference"), and then process these files to extract relevant information. The extracted data is then organized and written to an `.xlsx` file. The application utilizes OCR capabilities for image-based PDFs and can handle PDFs with embedded text.
+PDF_Extractor_JAVA is a Java application designed to extract data from PDF files and export it into an Excel (`.xlsx`) format. It provides a graphical user interface (GUI) for users to select PDF files, specify the type of content within the PDFs (e.g., "Proposed", "Reference"), and then process these files to extract relevant information. The extracted data is then organized and written to an `.xlsx` file. The application utilizes OCR capabilities for image-based PDFs and can handle PDFs with embedded text.
+
+## Features
+
+- **Graphical User Interface (GUI):** Easy-to-use interface for selecting PDF files and managing the extraction process.
+- **PDF to Excel Conversion:** Extracts data from PDF files and exports it into an organized `.xlsx` Excel format.
+- **OCR Capabilities:** Utilizes Tesseract OCR to extract text from image-based or scanned PDFs.
+- **File Type Specification:** Allows users to classify PDFs (e.g., "Proposed", "Reference") to handle different data types appropriately.
+- **Multi-Document PDF Handling:** Detects and processes PDFs that may contain multiple concatenated documents.
+- **Low-Confidence OCR Word Handling:** Identifies and can optionally report words where OCR confidence is low.
+- **Directory Preference:** Remembers last used directories for PDF selection and Excel export for user convenience.
+- **Batch Processing:** Supports processing multiple PDF files at once.
 
 ## File Structure
 
@@ -9,14 +20,16 @@ The project is organized into several key directories and files:
 
 ```
 PDF_Extractor_JAVA/
+├── .gitignore                        # Specifies intentionally untracked files that Git should ignore
 ├── PDFConverter/                     # Main Maven module for the PDF conversion logic
+│   ├── .gitignore                    # Specifies intentionally untracked files within PDFConverter
 │   ├── pom.xml                       # Maven project configuration, dependencies, and build settings
 │   ├── src/
 │   │   ├── main/
 │   │   │   ├── java/
 │   │   │   │   ├── app/              # Contains UI and application entry point
 │   │   │   │   │   ├── Main.java     # Main entry point of the application
-│   │   │   │   │   └── PdfSelectorGUI.java # Implements the main GUI for PDF selection and interaction
+│   │   │   │   │   ├── PdfSelectorGUI.java # Implements the main GUI for PDF selection and interaction
 │   │   │   │   │   └── ProgressDialog.java # UI for showing progress of PDF processing
 │   │   │   │   ├── imgprocessor/     # Image processing utilities for PDFs
 │   │   │   │   │   ├── PdfImageProcessor.java    # Handles conversion of PDF pages to images
@@ -37,17 +50,17 @@ PDF_Extractor_JAVA/
 │   │   │   │   │   ├── ConversionType.java # Enum or utility for PDF content types
 │   │   │   │   │   └── TreeNode.java       # (Node for a tree structure, if used)
 │   │   │   ├── resources/
-│   │   │   │   └── tessdata/         # Tesseract OCR training data (e.g., eng.traineddata)
+│   │   │   │   ├── META-INF/
+│   │   │   │   │   └── MANIFEST.MF   # Manifest file for JAR packaging
+│   │   │   │   └── tessdata/
+│   │   │   │       └── eng.traineddata # Tesseract OCR training data for English
 │   │   └── test/                     # Unit tests
 │   │       └── java/
 │   │           ├── excelTest.java
 │   │           ├── mainTest.java
 │   │           ├── readerTest.java
 │   │           └── treeTest.java
-│   └── target/                       # Compiled output and packaged JARs
-│       ├── PDFConverter-1.0.5-SNAPSHOT-jar-with-dependencies.jar # Executable JAR
-│       └── ... (other build artifacts)
-├── config.properties                 # Application configuration file (e.g., last used directory)
+│   └── target/                       # Compiled output and packaged JARs (e.g., executable JAR)
 └── README.md                         # This file
 ```
 
@@ -62,7 +75,7 @@ PDF_Extractor_JAVA/
 - **PDF Selection**:
     - "Select PDF" button opens a `JFileChooser` to allow users to select one or more PDF files.
     - Selected PDFs are added to a `JTable`.
-    - The last used directory for PDF selection is stored in `config.properties` and reloaded on next use.
+    - The last used directory for PDF selection is saved in `~/.lastPdfDir.pref` (user's home directory) and reloaded on next use.
 - **File Type Specification**:
     - The `JTable` has two columns: "PDF Name" and "File Type".
     - The "File Type" column contains a button that, when clicked, opens a dialog (`JOptionPane.showOptionDialog`) allowing the user to classify the PDF as "Proposed", "Reference", or "N/A".
@@ -72,7 +85,7 @@ PDF_Extractor_JAVA/
 - **Export to Excel**:
     - "Export to Excel" button triggers the data extraction and Excel generation process.
     - It prompts the user to choose a save location for the `.xlsx` file.
-    - The last used directory for Excel export is also managed via `config.properties`.
+    - The last used directory for Excel export is saved in `~/.lastExcelDir.pref` (user's home directory) and reloaded on next use.
 
 ### 3. Data Extraction Process (`service.DataExtractor`, `readers.PdfReader`, `imgprocessor.PdfImageProcessor`)
 - When "Export to Excel" is clicked:
@@ -87,18 +100,26 @@ PDF_Extractor_JAVA/
             - It attempts to identify if a single PDF file might represent multiple concatenated documents by looking for page number patterns (e.g., "Page XX of YY").
             - Separates content if multiple internal documents are detected.
             - Collects text content and confidence scores. Low confidence words might be flagged or handled specifically.
-            - (Further specific data extraction logic based on patterns, keywords, or structure would reside here or be called from here).
+            - This class also handles identification of multi-document PDFs, unit conversions (SI vs. imperial), and processes various specific fields based on keywords and patterns.
 - The extracted data, likely structured into `PdfData` and `Fields` objects, is collected for all processed PDFs.
 
 ### 4. Excel Generation (`service.ExcelWriter`)
 - `ExcelWriter.writeToExcel()`:
     - Takes the list of `PdfData` objects (and potentially the `typeSelection` map).
     - Creates an Apache POI `XSSFWorkbook`.
-    - Organizes the extracted data into sheets and cells.
+    - Organizes the extracted data into sheets and cells, potentially in a tree-like structure if applicable, reflecting the relationships between data elements.
     - Writes the workbook to the user-specified `.xlsx` file.
 
-### 5. Configuration (`config.properties`)
-- Stores the `lastPdfDirectory` and `lastExcelDirectory` to improve user experience by remembering the last accessed folders.
+### 5. Configuration
+The application stores user preferences in separate files within the user's home directory:
+- `~/.lastPdfDir.pref`: Stores the path of the last directory from which PDFs were selected.
+- `~/.lastExcelDir.pref`: Stores the path of the last directory where an Excel file was saved.
+These files are automatically created or updated by the application to persist settings across sessions.
+### 5. Configuration
+The application stores user preferences in separate files within the user's home directory:
+- `~/.lastPdfDir.pref`: Stores the path of the last directory from which PDFs were selected.
+- `~/.lastExcelDir.pref`: Stores the path of the last directory where an Excel file was saved.
+These files are automatically created or updated by the application to persist settings across sessions.
 
 ## Program Workflow
 
@@ -179,10 +200,10 @@ The project uses Maven for dependency management. Key dependencies include:
 - **JUnit (`junit:junit`):** For unit testing.
 
 ## Configuration
-The application uses a `config.properties` file located in the root directory (and copied to `target/classes` during build).
-- `lastPdfDirectory`: Stores the path of the last directory from which PDFs were selected.
-- `lastExcelDirectory`: Stores the path of the last directory where an Excel file was saved.
-This file is automatically created or updated by the application.
+The application stores user preferences in separate files within the user's home directory:
+- `~/.lastPdfDir.pref`: Stores the path of the last directory from which PDFs were selected.
+- `~/.lastExcelDir.pref`: Stores the path of the last directory where an Excel file was saved.
+These files are automatically created or updated by the application to persist settings across sessions.
 
 ## Build and Run
 
