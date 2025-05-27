@@ -83,14 +83,14 @@ public class TreeBuilder implements ITreeBuilder {
             // Main Floor 1 Area: pdfData.getExposedFloors().get(0).get(0)
             String mainWall1Area = pdfData.getMainWallComponents().get(0).get(0);
             String mainFloor1Area = pdfData.getExposedFloors().get(0).get(0);
-            String internalID = mainWall1Area + "-" + mainFloor1Area;
+            String projectId = mainWall1Area + "-" + mainFloor1Area;
 
             // Function for automatic file type detection
             if (fileType.get(j) == "Automatic") {
                 fileType.set(j, detectFileType(pdfData.getFile()));
             }
 
-            writeTree(" ", "Report ID", internalID, fileIndex);
+            writeTree(" ", "Project ID", projectId, fileIndex);
             writeTree(" ", "Permit #", "", fileIndex);
             writeTree(" ", "File Type", fileType.get(j), fileIndex);
 
