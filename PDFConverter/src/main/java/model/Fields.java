@@ -22,6 +22,7 @@ public enum Fields {
     ADULTS("GENERAL HOUSE CHARACTERISTICS", "Adults", "Adults", "occupants", false), // Number of adults
     CHILDREN("GENERAL HOUSE CHARACTERISTICS", "Children", "Children", "occupants", false), // Number of children
     INFANTS("GENERAL HOUSE CHARACTERISTICS", "Infants", "Infants", "occupants", false), // Number of infants
+    HOUSE_TYPE("GENERAL HOUSE CHARACTERISTICS", "House Type", "House type:", "houseType", false), // Type of house (e.g., detached, semi-detached)
 
     // HOUSE TEMPERATURES (Setpoint often refers to thermostat settings)
     DAYTIME_SETPOINT("HOUSE TEMPERATURES", "Daytime Setpoint (\u00B0C)", "Daytime Setpoint:", "daytimeSetpoint", true),

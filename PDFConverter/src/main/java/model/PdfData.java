@@ -27,6 +27,7 @@ public class PdfData {
     private String frontOrientation; // Compass orientation of the front of the house
     private String yearHouseBuilt; // Year the house was constructed
     private ConcurrentHashMap<String, String> occupants; // Map to store occupant types (e.g., "Adults") and their counts/details. Example: ["Adults", "2"]
+    private String houseType; // Type of house (e.g., "Single Family", "Townhouse")
 
     // House Temperatures (Thermostat Settings)
     private String daytimeSetpoint; // Daytime thermostat setpoint in °C

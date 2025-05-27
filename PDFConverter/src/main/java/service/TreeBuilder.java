@@ -40,6 +40,33 @@ public class TreeBuilder implements ITreeBuilder {
         occupantsOrder.put("INFANTS", 3);
     }
 
+    private String detectFileType(String fileName) {
+        fileName = fileName.toLowerCase();
+
+        // Includes common misspellings and variations of "proposed" and "reference"
+        List<String> proposeKeywords = List.of(
+            "propos", "propoz", "propse", "porpose", "pro"
+        );
+
+        List<String> referenceKeywords = List.of(
+            "ref"
+        );
+
+        for (String keyword : proposeKeywords) {
+            if (fileName.contains(keyword)) {
+                return "Proposed";
+            }
+        }
+
+        for (String keyword : referenceKeywords) {
+            if (fileName.contains(keyword)) {
+                return "Reference";
+            }
+        }
+
+        return "N/A";
+    }
+
     @Override
     public void buildTreeFromPDF(List<PdfData> pdfDataList, List<String> fileType) throws Exception {
         if (this.tree == null) {
@@ -57,6 +84,11 @@ public class TreeBuilder implements ITreeBuilder {
             String mainWall1Area = pdfData.getMainWallComponents().get(0).get(0);
             String mainFloor1Area = pdfData.getExposedFloors().get(0).get(0);
             String internalID = mainWall1Area + "-" + mainFloor1Area;
+
+            // Function for automatic file type detection
+            if (fileType.get(j) == "Automatic") {
+                fileType.set(j, detectFileType(pdfData.getFile()));
+            }
 
             writeTree(" ", "Report ID", internalID, fileIndex);
             writeTree(" ", "Permit #", "", fileIndex);

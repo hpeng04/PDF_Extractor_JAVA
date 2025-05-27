@@ -175,7 +175,7 @@ public class PdfSelectorGUI extends JFrame {
         public Object getCellEditorValue() {
             if (isPushed) {
                 // Options for the file type selection dialog
-                String[] options = {"Proposed", "Reference", "N/A"};
+                String[] options = {"Proposed", "Reference", "Automatic", "N/A"};
                 // Show an option dialog to the user. JOptionPane is from javax.swing.JOptionPane.
                 int selection = JOptionPane.showOptionDialog(button, "Select type for " + pdfName,
                         "Selection", JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
@@ -314,7 +314,12 @@ public class PdfSelectorGUI extends JFrame {
                             } catch (Exception e) {
                                 JOptionPane.showMessageDialog(null, "Error extracting secondary data from " + pdfName + ".\nError:" + e, "Error", JOptionPane.ERROR_MESSAGE);
                             }
-                            fileTypeList.add("N/A"); // Add N/A type for the secondary part
+                            if (fileTypeList.get(-1).equals("Automatic")) {
+                                fileTypeList.add("Automatic");
+                            }
+                            else {
+                                fileTypeList.add("N/A"); // Add N/A type for the secondary part
+                            }
                             if (!extractor.getLowConfContent().isEmpty()) { // Check again for low confidence from secondary processing
                                 lowConfList.add("-------------------\n" + pdfName + " (secondary part)\n");
                                 lowConfList.addAll(extractor.getLowConfContent());
@@ -406,7 +411,7 @@ public class PdfSelectorGUI extends JFrame {
                     // tableModel.addRow is from javax.swing.table.DefaultTableModel
                     // Adds a new row with PDF name and a default "Select File Type" button text.
                     tableModel.addRow(new Object[]{file.getAbsolutePath(), "Select File Type"});
-                    typeSelection.put(file.getAbsolutePath(), "N/A"); // Default type to N/A
+                    typeSelection.put(file.getAbsolutePath(), "Automatic"); // Default type to N/A
                 } else {
                     // JOptionPane (from javax.swing.JOptionPane) for showing info messages.
                     JOptionPane.showMessageDialog(this, "File " + file.getName() + " is already in the list.", "File Exists", JOptionPane.INFORMATION_MESSAGE);
