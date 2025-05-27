@@ -45,7 +45,7 @@ public class TreeBuilder implements ITreeBuilder {
 
         // Includes common misspellings and variations of "proposed" and "reference"
         List<String> proposeKeywords = List.of(
-            "propos", "propoz", "propse", "porpose", "pro"
+            "propos", "propoz", "propse", "porpos", "pro"
         );
 
         List<String> referenceKeywords = List.of(
