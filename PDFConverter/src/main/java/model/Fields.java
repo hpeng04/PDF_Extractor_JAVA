@@ -14,6 +14,7 @@ public enum Fields {
     FILE(" ", "File", "File:", "file", false), // Represents the source file name
     DATE_OF_ENTRY(" ", "Date of entry", "Date of entry:", "dataOfEntry", false), // Date the data was entered or recorded
     COMPANY(" ", "Company", "Company:", "company", false), // Company associated with the report
+    ADDRESS(" ", "Address", "Street address:", "address", false), // Address of the building or location
 
     // GENERAL HOUSE CHARACTERISTICS
     FRONT_ORIENTATION("GENERAL HOUSE CHARACTERISTICS", "Front orientation", "Front orientation:", "frontOrientation", false),

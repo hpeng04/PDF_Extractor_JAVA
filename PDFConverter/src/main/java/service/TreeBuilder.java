@@ -67,6 +67,12 @@ public class TreeBuilder implements ITreeBuilder {
         return "N/A";
     }
 
+    private String generateProjectId(String param1, String param2, String param3) {
+        // Generate a unique project ID based on the provided parameters
+        String combined = param1 + ":" + param2 + ":" + param3;
+        return UUID.nameUUIDFromBytes(combined.getBytes()).toString();
+    }
+
     @Override
     public void buildTreeFromPDF(List<PdfData> pdfDataList, List<String> fileType) throws Exception {
         if (this.tree == null) {
@@ -83,7 +89,8 @@ public class TreeBuilder implements ITreeBuilder {
             // Main Floor 1 Area: pdfData.getExposedFloors().get(0).get(0)
             String mainWall1Area = pdfData.getMainWallComponents().get(0).get(0);
             String mainFloor1Area = pdfData.getExposedFloors().get(0).get(0);
-            String projectId = mainWall1Area + "-" + mainFloor1Area;
+            String address = pdfData.getAddress() == null ? "" : pdfData.getAddress();
+            String projectId = generateProjectId(address, mainWall1Area, mainFloor1Area);
 
             // Function for automatic file type detection
             if (fileType.get(j) == "Automatic") {

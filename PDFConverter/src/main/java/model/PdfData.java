@@ -22,6 +22,7 @@ public class PdfData {
     private String file; // Name/path of the source PDF file
     private String dataOfEntry; // Date of data entry or report generation
     private String company; // Company associated with the data/report
+    private String address; // Address of the building or location
 
     // General House Characteristics
     private String frontOrientation; // Compass orientation of the front of the house
