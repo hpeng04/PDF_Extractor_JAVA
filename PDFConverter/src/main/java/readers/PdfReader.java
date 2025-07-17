@@ -54,27 +54,6 @@ public class PdfReader extends Reader {
         this.pagesWithInfo = resultsWithDetail;
     }
 
-    // TODO: new added
-    public void setAllContent(File pdfFile, ProgressDialog dialog, AtomicInteger progress, int numFiles) throws TesseractException {
-        ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        ConcurrentHashMap<Integer, List<Word>> resultsWithDetail = new ConcurrentHashMap<>();
-
-        AtomicDoubleBackedByAtomicLong p = new AtomicDoubleBackedByAtomicLong(progress.get());
-        try {
-            ITesseract reader = new Reader().tessReader;
-
-            String ocrResultDetailed = reader.doOCR(pdfFile);
-            System.out.println(ocrResultDetailed);
-
-        } finally {
-            if (!executor.isTerminated()) {
-                executor.shutdownNow();
-            }
-        }
-        this.pagesWithInfo = resultsWithDetail;
-    }
-
-
     public ConcurrentHashMap<Integer, List<Word>> getPagesWithInfo() {
         return this.pagesWithInfo;
     }

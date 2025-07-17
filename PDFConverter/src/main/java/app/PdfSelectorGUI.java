@@ -236,6 +236,7 @@ public class PdfSelectorGUI extends JFrame {
             }
 
             // ProgressDialog is a custom class (app.ProgressDialog)
+            long start_time = System.currentTimeMillis(); // Record the start time for performance measurement
             ProgressDialog progressDialog = new ProgressDialog(null, "Processing...");
             progressDialog.showDialog(); // Makes the progress dialog visible
             AtomicInteger progress = new AtomicInteger(0); // Thread-safe counter for progress updates
@@ -345,27 +346,44 @@ public class PdfSelectorGUI extends JFrame {
                     writer.writeToExcel(sheet, treeBuilder);
                     progressDialog.updateProgress(95); // Update progress
 
-                    // Write low confidence content to a separate file.
                     if (!lowConfList.isEmpty()) {
-                        Path lowConfPath = Paths.get(finalFileToSave.getParent(), "low_confidence_output.txt"); // java.nio.file.Paths, java.nio.file.Path
+                        String lowConfFilePath = finalFileToSave.getParent() + "/LowConfContent.txt";
+                        Path path = Paths.get(lowConfFilePath);
                         try {
-                            // Files.write (java.nio.file.Files) writes lines to a file.
-                            // StandardOpenOption.CREATE creates the file if it doesn't exist.
-                            // StandardOpenOption.APPEND appends to the file if it exists.
-                            // StandardOpenOption.WRITE opens the file for writing.
-                            Files.write(lowConfPath, lowConfList, StandardOpenOption.CREATE, StandardOpenOption.APPEND, StandardOpenOption.WRITE);
+                            Files.write(path, lowConfList,StandardOpenOption.CREATE, StandardOpenOption.APPEND);
                         } catch (IOException e) {
-                            JOptionPane.showMessageDialog(null, "Error writing low confidence output to file: " + e.getMessage(), "File Write Error", JOptionPane.ERROR_MESSAGE);
+                            JOptionPane.showMessageDialog(null, "Error writing to Low Confidence file.", "Error", JOptionPane.ERROR_MESSAGE);
                         }
                     }
-                    // Save the workbook to the selected file path.
-                    try (FileOutputStream fos = new FileOutputStream(finalFileToSave)) { // java.io.FileOutputStream
-                        workbook.write(fos); // Writes workbook content to the FileOutputStream
-                        workbook.close(); // Closes the workbook, releasing resources (important!)
+
+
+                    // Save the workbook
+                    try (FileOutputStream out = new FileOutputStream(finalFileToSave)) {
+                        workbook.write(out);
+                        progressDialog.updateProgress(100);
+                        long end_time = System.currentTimeMillis(); // Record the end time
+                        long duration = end_time - start_time; // Calculate the duration
+                        System.out.println("Duration: " + duration + " ms");
+                        if (!lowConfList.isEmpty()) {
+                            JOptionPane.showMessageDialog(null, "Excel file saved! However, " +
+                                    "there are low confidence contents in the PDFs. Please check the LowConfContent.txt file for details.");
+                        } else {
+                            JOptionPane.showMessageDialog(null, "Excel file saved: " + finalFileToSave.getAbsolutePath());
+                        }
+
                     } catch (IOException e) {
-                        JOptionPane.showMessageDialog(null, "Failed to save the Excel file.", "Error", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(null, "Error writing to Excel file, please close the Excel file and retry.", "Error", JOptionPane.ERROR_MESSAGE);
+                    } finally {
+                        try {
+                            workbook.close();
+                            // clean memory
+                            fileTypeList.clear();
+                            lowConfList.clear();
+                            System.gc();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
-                    progressDialog.updateProgress(100); // Final progress update
                     return null;
                 }
 

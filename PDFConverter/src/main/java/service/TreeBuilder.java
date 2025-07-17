@@ -70,7 +70,7 @@ public class TreeBuilder implements ITreeBuilder {
     private String generateProjectId(String param1, String param2, String param3) {
         // Generate a unique project ID based on the provided parameters
         String combined = param1 + ":" + param2 + ":" + param3;
-        return UUID.nameUUIDFromBytes(combined.getBytes()).toString();
+        return combined; //UUID.nameUUIDFromBytes(combined.getBytes()).toString();
     }
 
     @Override
