@@ -1,14 +1,14 @@
 # PDF_Extractor_JAVA
 
 ## Project Overview
-PDF_Extractor_JAVA is a Java application designed to extract data from PDF files and export it into an Excel (`.xlsx`) format. It provides a graphical user interface (GUI) for users to select PDF files, specify the type of content within the PDFs (e.g., "Proposed", "Reference"), and then process these files to extract relevant information. The extracted data is then organized and written to an `.xlsx` file. The application utilizes OCR capabilities for image-based PDFs and can handle PDFs with embedded text.
+PDF_Extractor_JAVA is a Java application designed to extract HOT2000 data from PDF files and export it into an Excel (`.xlsx`) format. It provides a graphical user interface (GUI) for users to select PDF files, specify the type of content within the PDFs (e.g., "Proposed", "Reference"), and then process these files to extract relevant information. The extracted data is then organized and written to an `.xlsx` file. The application utilizes OCR capabilities for image-based PDFs and can handle PDFs with embedded text.
 
 ## Features
 
 - **Graphical User Interface (GUI):** Easy-to-use interface for selecting PDF files and managing the extraction process.
 - **PDF to Excel Conversion:** Extracts data from PDF files and exports it into an organized `.xlsx` Excel format.
 - **OCR Capabilities:** Utilizes Tesseract OCR to extract text from image-based or scanned PDFs.
-- **File Type Specification:** Allows users to classify PDFs (e.g., "Proposed", "Reference") to handle different data types appropriately.
+- **File Type Specification:** Automatic detection of the HOT2000 file type. Also allows users to classify PDFs (e.g., "Proposed", "Reference") to handle different data types appropriately. 
 - **Multi-Document PDF Handling:** Detects and processes PDFs that may contain multiple concatenated documents.
 - **Low-Confidence OCR Word Handling:** Identifies and can optionally report words where OCR confidence is low.
 - **Directory Preference:** Remembers last used directories for PDF selection and Excel export for user convenience.
@@ -218,6 +218,8 @@ Navigate to the `PDFConverter` directory and run:
 mvn clean package
 ```
 This will compile the project and create a JAR file with dependencies in the `PDFConverter/target/` directory (e.g., `PDFConverter-1.0.5-SNAPSHOT-jar-with-dependencies.jar`).
+
+Packaging into an executable can be done by a packager like launch4j.
 
 ### Run
 Execute the JAR file:
