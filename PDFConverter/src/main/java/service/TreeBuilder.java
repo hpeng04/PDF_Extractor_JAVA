@@ -67,10 +67,10 @@ public class TreeBuilder implements ITreeBuilder {
         return "N/A";
     }
 
-    private String generateProjectId(String param1, String param2, String param3) {
+    private String generateProjectId(String... params) {
         // Generate a unique project ID based on the provided parameters
-        String combined = param1 + ":" + param2 + ":" + param3;
-        return combined; //UUID.nameUUIDFromBytes(combined.getBytes()).toString();
+        String combined = String.join(":", params);
+        return UUID.nameUUIDFromBytes(combined.getBytes()).toString();
     }
 
     @Override
@@ -90,7 +90,7 @@ public class TreeBuilder implements ITreeBuilder {
             String mainWall1Area = pdfData.getMainWallComponents().get(0).get(0);
             String mainFloor1Area = pdfData.getExposedFloors().get(0).get(0);
             String address = pdfData.getAddress() == null ? "" : pdfData.getAddress();
-            String projectId = generateProjectId(address, mainWall1Area, mainFloor1Area);
+            String projectId = generateProjectId(address);
 
             // Function for automatic file type detection
             if (fileType.get(j) == "Automatic") {
@@ -98,7 +98,6 @@ public class TreeBuilder implements ITreeBuilder {
             }
 
             writeTree(" ", "Project ID", projectId, fileIndex);
-            writeTree(" ", "Permit #", "", fileIndex);
             writeTree(" ", "File Type", fileType.get(j), fileIndex);
 
             TreeNode<Object> tempWindowChar = new TreeNode<>();

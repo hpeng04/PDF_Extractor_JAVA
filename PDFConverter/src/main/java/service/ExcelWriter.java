@@ -66,7 +66,7 @@ public class ExcelWriter {
         // Merge A1-E1 and apply the style
         sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 4));
         Cell cellA1 = row1.createCell(0);
-        cellA1.setCellValue("Permit # is user entered, all other fields are extracted using the tool");
+        cellA1.setCellValue("Project ID is automatically generated for internal use");
         cellA1.setCellStyle(headerStyle);
     }
 
