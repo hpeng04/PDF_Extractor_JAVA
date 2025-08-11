@@ -9,7 +9,7 @@ PDF_Extractor_JAVA is a Java application designed to extract HOT2000 data from P
 - **PDF to Excel Conversion:** Extracts data from PDF files and exports it into an organized `.xlsx` Excel format.
 - **OCR Capabilities:** Utilizes Tesseract OCR to extract text from image-based or scanned PDFs.
 - **File Type Specification:** Automatic detection of the HOT2000 file type. Also allows users to classify PDFs (e.g., "Proposed", "Reference") to handle different data types appropriately. 
-- **Multi-Document PDF Handling:** Detects and processes PDFs that may contain multiple concatenated documents.
+- **Multi-Document PDF Handling:** Detects and processes PDFs that contains combined Proposed/Reference documents.
 - **Low-Confidence OCR Word Handling:** Identifies and can optionally report words where OCR confidence is low.
 - **Directory Preference:** Remembers last used directories for PDF selection and Excel export for user convenience.
 - **Batch Processing:** Supports processing multiple PDF files at once.
@@ -142,7 +142,7 @@ These files are automatically created or updated by the application to persist s
     V                                                V
 [JFileChooser: Shows Dialog]                         [JOptionPane: Shows "Select type" dialog]
     |                                                |
-    V (User selects PDF(s))                          V (User selects type: "Proposed", "Reference", "N/A")
+    V (User selects PDF(s))                          V (User selects type: "Automatic", "Proposed", "Reference", "N/A")
 [PdfSelectorGUI: Adds PDF to JTable & typeSelection map (default type)] |
     |                                                [PdfSelectorGUI: Updates JTable & typeSelection map with chosen type]
     |<-----------------------------------------------(User can repeat PDF selection/type assignment)
