@@ -178,6 +178,9 @@ public class PdfSelectorGUI extends JFrame {
                     List<PdfData> pdfList = new ArrayList<>();
                     List<String> fileTypeList = new ArrayList<>();
                     List<String> lowConfList = new ArrayList<>();
+                    List<List<String>> lowConfTable = new ArrayList<>();
+                    List<String> lowConfAnnTable_SpaceHeating = new ArrayList<>();
+                    List<String> lowConfAnnTable_ByDevice = new ArrayList<>();
                     // Check if the file exists to decide between creating a new Workbook or opening an existing one
                     if (finalFileToSave.exists()) {
                         // Load the existing workbook
@@ -221,6 +224,27 @@ public class PdfSelectorGUI extends JFrame {
                             // reset the lowConfContent list to avoid duplication
                             extractor.setLowConfContent(new CopyOnWriteArrayList<>());
                         }
+                        if (!extractor.getLowConfAnnTable().isEmpty()) {
+                            lowConfTable.add(Collections.singletonList("-------------------\n" + pdfName + "\n"));
+                            lowConfTable.addAll(extractor.getLowConfAnnTable());
+                            // reset the list to avoid duplication
+                            extractor.setLowConfAnnTable_SpaceHeating(new ArrayList<>());
+                            extractor.setLowConfAnnTable_ByDevice(new ArrayList<>());
+                            extractor.setLowConfAnnTable(new ArrayList<>());
+                        }
+//
+//                        if (!extractor.getLowConfAnnTable_SpaceHeating().isEmpty()) {
+//                            lowConfAnnTable_SpaceHeating.add("-------------------\n" + pdfName + "\n");
+//                            lowConfAnnTable_SpaceHeating.addAll(extractor.getLowConfAnnTable_SpaceHeating());
+//                            // reset the list to avoid duplication
+//                            extractor.setLowConfAnnTable_SpaceHeating(new ArrayList<>());
+//                        }
+//                        if (!extractor.getLowConfAnnTable_ByDevice().isEmpty()) {
+//                            lowConfAnnTable_ByDevice.add("-------------------\n" + pdfName + "\n");
+//                            lowConfAnnTable_ByDevice.addAll(extractor.getLowConfAnnTable_ByDevice());
+//                            // reset the list to avoid duplication
+//                            extractor.setLowConfAnnTable_ByDevice(new ArrayList<>());
+//                        }
 
                         // Check if the PDF contains multiple files
                         if (extractor.isMultipleFiles()) {
@@ -235,6 +259,18 @@ public class PdfSelectorGUI extends JFrame {
                                 lowConfList.add("-------------------\n" + pdfName + "\n");
                                 lowConfList.addAll(extractor.getLowConfContent());
                             }
+                            if (!extractor.getLowConfAnnTable().isEmpty()) {
+                                lowConfTable.add(Collections.singletonList("-------------------\n" + pdfName + "\n"));
+                                lowConfTable.addAll(extractor.getLowConfAnnTable());
+                            }
+//                            if (!extractor.getLowConfAnnTable_SpaceHeating().isEmpty()) {
+//                                lowConfAnnTable_SpaceHeating.add("-------------------\n" + pdfName + "\n");
+//                                lowConfAnnTable_SpaceHeating.addAll(extractor.getLowConfAnnTable_SpaceHeating());
+//                            }
+//                            if (!extractor.getLowConfAnnTable_ByDevice().isEmpty()) {
+//                                lowConfAnnTable_ByDevice.add("-------------------\n" + pdfName + "\n");
+//                                lowConfAnnTable_ByDevice.addAll(extractor.getLowConfAnnTable_ByDevice());
+//                            }
                         }
                     });
 
@@ -257,12 +293,105 @@ public class PdfSelectorGUI extends JFrame {
                     treeBuilder = null;
 
                     if (!lowConfList.isEmpty()) {
-                        String lowConfFilePath = finalFileToSave.getParent() + "/LowConfContent.txt";
+                        String lowConfFilePath = finalFileToSave.getParent() + "/Low_Confidence_Content.txt";
                         Path path = Paths.get(lowConfFilePath);
                         try {
                             Files.write(path, lowConfList,StandardOpenOption.CREATE, StandardOpenOption.APPEND);
                         } catch (IOException e) {
-                            JOptionPane.showMessageDialog(null, "Error writing to Low Confidence file.", "Error", JOptionPane.ERROR_MESSAGE);
+                            JOptionPane.showMessageDialog(null, "Error writing to Low_Confidence_Content file.", "Error", JOptionPane.ERROR_MESSAGE);
+                        }
+                    }
+
+                    if (!lowConfTable.isEmpty()) {
+                        String lowConfFilePath = finalFileToSave.getParent() + "/Annual_Table_with_Issue.txt";
+                        Path path = Paths.get(lowConfFilePath);
+
+                        try {
+                            String disclaimer = "The following data may contain some errors,\npotentially due to OCR confusion between the digits 5 and 6,\n" +
+                                    "data containing 5 or 6 have been highlighted by <<>>.\nPlease check them carefully.\n\n";
+                            boolean disclaimerExists = false;
+                            // Check if the file contains the disclaimer
+                            if (Files.exists(path)) {
+                                try (BufferedReader reader = Files.newBufferedReader(path)) {
+                                    String line;
+                                    while ((line = reader.readLine()) != null) {
+                                        if (line.contains(disclaimer)) {
+                                            disclaimerExists = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            // Write the disclaimer only if it doesn't already exist
+                            if (!disclaimerExists) {
+                                try (BufferedWriter writer1 = Files.newBufferedWriter(path, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+                                    writer1.write(disclaimer);
+                                    writer1.newLine();
+                                }
+                            }
+                        } catch (IOException e) {
+                            JOptionPane.showMessageDialog(null, "Error writing to Annual_Table_with_Issue file.", "Error", JOptionPane.ERROR_MESSAGE);
+                        }
+
+                        for (List<String> list : lowConfTable) {
+                            String divider = "";
+                            List<String> headers = new ArrayList<>();
+                            List<List<String>> columns = new ArrayList<>();
+                            List<String> currentColumn = null;
+                            if (list.get(0).contains("-------------------")) {
+                                divider = list.get(0);
+                                try {
+                                    BufferedWriter writer1 = Files.newBufferedWriter(path, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                                    //Write divider
+                                    writer1.write(divider);
+                                    writer1.newLine();
+                                    writer1.close();
+                                } catch (IOException e) {
+                                    JOptionPane.showMessageDialog(null, "Error writing to Annual_Table_with_Issue file.", "Error", JOptionPane.ERROR_MESSAGE);
+                                }
+                            } else {
+                                for (int i = 0; i < list.size(); i += 14) {
+                                    headers.add(list.get(i));
+                                    currentColumn = new ArrayList<>();
+                                    for (int j = i+1; j < 14 + i; j++) {
+                                        currentColumn.add(list.get(j));
+                                    }
+                                    columns.add(currentColumn);
+                                }
+                                try {
+                                    BufferedWriter writer1 = Files.newBufferedWriter(path, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                                    // Write headers
+                                    for (int i = 0; i < headers.size(); i++) {
+                                        String header = headers.get(i);
+                                        if (i == 0) {
+                                            // First header with 10 spaces
+                                            writer1.write(String.format("%-10s", header));
+                                        } else {
+                                            // All other headers with 20 spaces
+                                            writer1.write(String.format("%-20s", header));
+                                        }
+                                    }
+                                    writer1.newLine();
+                                    // Write data rows
+                                    for (int i = 0; i < 13; i++) {
+                                        for (int j = 0; j < columns.size(); j++) {
+                                            List<String> column = columns.get(j);
+                                            if (j == 0) {
+                                                // First column of Month with 10 spaces
+                                                writer1.write(String.format("%-10s", column.get(i)));
+                                            } else {
+                                                // All other columns with 20 spaces
+                                                writer1.write(String.format("%-20s", column.get(i)));
+                                            }
+                                        }
+                                        writer1.newLine();
+                                    }
+                                    writer1.close();
+                                } catch (IOException e) {
+                                    JOptionPane.showMessageDialog(null, "Error writing to Annual_Table_with_Issue file.", "Error", JOptionPane.ERROR_MESSAGE);
+                                }
+                            }
+
                         }
                     }
 
@@ -271,9 +400,9 @@ public class PdfSelectorGUI extends JFrame {
                     try (FileOutputStream out = new FileOutputStream(finalFileToSave)) {
                         workbook.write(out);
                         progressDialog.updateProgress(100);
-                        if (!lowConfList.isEmpty()) {
+                        if (!(lowConfList.isEmpty() && lowConfTable.isEmpty())) {
                             JOptionPane.showMessageDialog(null, "Excel file saved! However, " +
-                                    "there are low confidence contents in the PDFs. Please check the LowConfContent.txt file for details.");
+                                    "there are low confidence contents in the PDFs. Please check the Low_Confidence_Content.txt and/or Annual_Table_with_Issue.txt file for details.");
                         } else {
                             JOptionPane.showMessageDialog(null, "Excel file saved: " + finalFileToSave.getAbsolutePath());
                         }

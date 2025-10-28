@@ -24,25 +24,25 @@ public class Reader {
 
     private void setTessData(ITesseract reader) {
         try {
-            // Get the tessdata path from resources directory
-            ClassLoader classLoader = Reader.class.getClassLoader();
-            URL tessdataURL = classLoader.getResource("tessdata");
-            if (tessdataURL == null) {
-                System.err.println("tessdata directory not found in resources");
-                return;
+            // Create a temporary directory to store tessdata
+            Path tempDir = Files.createTempDirectory("tessdata");
+
+            // Assuming 'eng.traineddata' is stored in 'src/main/resources'
+            String resourcePath = "/eng.traineddata";
+            InputStream in = Reader.class.getResourceAsStream(resourcePath);
+            File tessDataFile = new File(tempDir.toFile(), "eng.traineddata");
+
+            try (OutputStream out = new FileOutputStream(tessDataFile)) {
+                // Copy tessdata from resources to the temporary directory
+                byte[] buffer = new byte[1024];
+                int readBytes;
+                while ((readBytes = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, readBytes);
+                }
             }
 
-            // Convert URL to a file path
-            try {
-                File tessdataDir = Paths.get(tessdataURL.toURI()).toFile();
-                reader.setDatapath(tessdataDir.getAbsolutePath());
-            } catch (URISyntaxException e) {
-                e.printStackTrace();
-                return;
-            }
-
+            reader.setDatapath(tempDir.toAbsolutePath().toString());
             reader.setLanguage("eng");
-            reader.setOcrEngineMode(1);
 
         } catch (Exception e) {
             e.printStackTrace();

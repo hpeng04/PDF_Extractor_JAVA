@@ -72,10 +72,10 @@ public class mainTest {
 
     @Test
     public void allContentTest() throws TesseractException {
-        String[] a = {"abc", "2", "10", "0"};
-        List<String> l = Arrays.asList(a);
-        Collections.sort(l);
-        String b = "strawberries";
-        System.out.println(b.substring(2,5));
+        String a = "12345.67";
+        if (a.contains("5")) {
+            a = "<" + a + ">";
+        }
+        System.out.println(a);
     }
 }

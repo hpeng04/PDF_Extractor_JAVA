@@ -6,7 +6,6 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -55,15 +54,6 @@ public class PdfImageProcessor {
 
         int top = (int) (height * 0.05);
         int bottom = (int) (height * 1);
-
-        // TODO: delete
-////         Get the user's desktop directory
-//        String userHome = System.getProperty("user.home");
-//        File desktopDir = new File(userHome, "Desktop/test_pngs/scanned");
-//
-//        // Save the cropped image to the desktop
-//        File outputfile = new File(desktopDir, "cropped_image_page_" + pageNumber + ".png");
-//        ImageIO.write(image, "png", outputfile);
 
         return image.getSubimage(0, top, width, bottom - top);
     }
