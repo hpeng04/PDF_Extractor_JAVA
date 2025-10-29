@@ -37,7 +37,14 @@ public class DataExtractor {
 
     private List<Float> content2_confidence = new ArrayList<>();
     @Getter @Setter
-    private List<String> lowConfContent = new CopyOnWriteArrayList<>();
+    private List<String> lowConfContent = new CopyOnWriteArrayList<>(); // thread-safe over ArrayList()
+
+    @Getter @Setter
+    private List<String> lowConfAnnTable_SpaceHeating = new ArrayList<>();
+    @Getter @Setter
+    private List<String> lowConfAnnTable_ByDevice = new ArrayList<>();
+    @Getter @Setter
+    private List<List<String>> lowConfAnnTable = new ArrayList<>();
 
 
     public boolean isMultipleFiles() {
@@ -768,6 +775,12 @@ public class DataExtractor {
                                 if (month.equals("Ann")) break;
                             }
                             data.setSpaceHeatingSystemPerformance(monthlyData);
+
+//                            monthlyData.replace("Jul", List.of("1230.7", "1111.1", "0.965")); // for test purpose
+                            // check if the sum of 12 months differs with Ann data. If so, there might be a mis-OCR'ed value
+                            String[] columnHeaders = new String[] {"Space Heating Load", "Furnace Input", ""};
+                            this.lowConfAnnTable_SpaceHeating = verifyAnnSum(columnHeaders, monthlyData);
+
                             // clean memory
                             list = null;
                             monthlyData = null;
@@ -796,7 +809,6 @@ public class DataExtractor {
                                     // or, the next number could be .4 (ie. 123 .4), both cases, combine the two parts to get the actual number,
                                     // if not, assume the current number is a whole number, and divide it by 10^decimalPlaces (ie. 1234)
                                     float value1 = Float.parseFloat(parts[i]);
-                                    float conf1 = content_confidence.get(i);
                                     if (!parts[i].contains(".")) {
                                         String original = parts[i];
                                         if (!parts[i+1].contains(".") && parts[i+1].length() == decimalPlaces) { // case 123 4
@@ -930,6 +942,12 @@ public class DataExtractor {
                                 if (month.equals("Ann")) break;
                             }
                             data.setMonthlyEstimatedEnergyConsumptionByDevice(monthlyData);
+
+                            // check if the sum of 12 months differs with Ann data. If so, there might be a mis-OCR'ed value
+                            String[] columnHeaders = new String[] {"Space Heating Primary", "Space Heating Secondary", "DHW Heating Primary", "DHW Heating Secondary",
+                                    "Lights & Appliances", "HRV & FANS", "Air Conditioner"};
+                            this.lowConfAnnTable_ByDevice = verifyAnnSum(columnHeaders, monthlyData);
+
                             // clean memory
                             monthlyData = null;
                             list = null;
@@ -990,7 +1008,77 @@ public class DataExtractor {
         if (occupants.size() < 3) {
             lowConfContent.add("Occupants");
         }
+        if (!lowConfAnnTable_SpaceHeating.isEmpty()) lowConfAnnTable.add(lowConfAnnTable_SpaceHeating);
+        if (!lowConfAnnTable_ByDevice.isEmpty()) lowConfAnnTable.add(lowConfAnnTable_ByDevice);
         return data;
+    }
+
+    private List<String> verifyAnnSum(String[] columnHeader, Map<String, List<String>> monthlyData_unsorted) {
+        float[] monthlyTotals = monthlyData_unsorted.get("Ann").size() == 3 ?
+                new float[monthlyData_unsorted.get("Ann").size() - 1 ] : new float[monthlyData_unsorted.get("Ann").size()];
+
+//        float[] monthlyTotals =  new float[monthlyData_unsorted.get("Ann").size()];
+        List<String> issueColumn = new ArrayList<>();
+
+        Map<String, Integer> monthOrder;
+        monthOrder = new HashMap<>();
+        monthOrder.put("Jan", 1);
+        monthOrder.put("Feb", 2);
+        monthOrder.put("Mar", 3);
+        monthOrder.put("Apr", 4);
+        monthOrder.put("May", 5);
+        monthOrder.put("Jun", 6);
+        monthOrder.put("Jul", 7);
+        monthOrder.put("Aug", 8);
+        monthOrder.put("Sep", 9);
+        monthOrder.put("Oct", 10);
+        monthOrder.put("Nov", 11);
+        monthOrder.put("Dec", 12);
+        monthOrder.put("Ann", 13);
+
+        Map<String, List<String>> monthlyData = new TreeMap<>(Comparator.comparingInt(monthOrder::get));
+        monthlyData.putAll(monthlyData_unsorted);
+
+        for (String month : monthlyData.keySet()) {
+            if (!month.equals("Ann")) {
+                for (int i = 0; i < monthlyTotals.length; i++) {
+                    monthlyTotals[i] += Float.parseFloat(monthlyData.get(month).get(i));
+                }
+            }
+        }
+
+        for (int i = 0; i < monthlyTotals.length; i++) {
+            float annValue = Float.parseFloat(monthlyData.get("Ann").get(i));
+            if (Math.abs(annValue - monthlyTotals[i]) > 1 && !issueColumn.contains(columnHeader[i])) {
+                issueColumn.add(columnHeader[i]);
+                for (String month : monthlyData.keySet()) {
+                    String value = monthlyData.get(month).get(i);
+                    if (value.contains("5") || value.contains("6")) {
+                        value = "<<" + value + ">>";
+                    }
+                    issueColumn.add(value);
+                }
+            }
+        }
+
+        if (!issueColumn.isEmpty()) {
+            issueColumn.add(0, "ANN");
+            issueColumn.add(0, "DEC");
+            issueColumn.add(0, "NOV");
+            issueColumn.add(0, "OCT");
+            issueColumn.add(0, "SEP");
+            issueColumn.add(0, "AUG");
+            issueColumn.add(0, "JUL");
+            issueColumn.add(0, "JUN");
+            issueColumn.add(0, "MAY");
+            issueColumn.add(0, "APR");
+            issueColumn.add(0, "MAR");
+            issueColumn.add(0, "FEB");
+            issueColumn.add(0, "JAN");
+            issueColumn.add(0, "Month");
+        }
+
+        return issueColumn;
     }
 
     private void findRValue(List<String> rValueList, String line, Pattern pattern) {
@@ -1039,13 +1127,15 @@ public class DataExtractor {
         }
     }
 
-    private  List<String> findAnnualTable(List<String> content, String startMarker, String endMarker, Pattern pattern) {
+    private  List<String> findAnnualTable(List<String> content, String startMarker1, String endMarker1, Pattern pattern) {
         List<String> list = new ArrayList<>();
         int start = 0;
+        String startMarker = startMarker1.replaceAll("\\s", "");
+        String endMarker = endMarker1.replaceAll("\\s", "");
 
         for (int i = content.size() - 1; i >= 0; i--) {
             String line = content.get(i);
-            if (line.contains(startMarker)) {
+            if (line.replaceAll("\\s", "").contains(startMarker)) {
                 start = i;
                 break;
             }
@@ -1059,7 +1149,7 @@ public class DataExtractor {
                 list.add(0, line.replace("\n", ""));
             }
 
-            if (line.contains(endMarker)) break;
+            if (line.replaceAll("\\s", "").contains(endMarker)) break;
         }
 
         Collections.reverse(list);
@@ -1070,12 +1160,13 @@ public class DataExtractor {
     private String findVentEload(List<String> content, String k1) {
         String k2 = k1 + "\n";
         String s = "";
+        String keyword = "Estimated Ventilation Electrical Load:".replaceAll("\\s", "");
         float value = 0;
         for (int i = 1; i < content.size(); i++) {
             String s2 = content.get(i);
             if (s2.matches(k1) || s2.matches(k2)) {
                 String s1 = content.get(i-1);
-                if (s1.contains("Estimated Ventilation Electrical Load:")) {
+                if (s1.replaceAll("\\s", "").contains(keyword)) {
                     s = s1;
                     break;
                 }
@@ -1094,16 +1185,18 @@ public class DataExtractor {
 
     private void findPowerAndEfficiency(List<String> content, List<Float> content_confidence, Fields field, String keywordImperial, PdfData data, Pattern pattern) {
         boolean foundSectionStart = false;
+        String keyword = "CENTRAL VENTILATION SYSTEM".replaceAll("\\s", "");
 
         for (int i = 0; i < content.size(); i++) {
             String line = content.get(i);
-            if (line.contains("CENTRAL VENTILATION SYSTEM")) {
+            if (line.replaceAll("\\s", "").contains(keyword)) {
                 foundSectionStart = true;
                 continue;
             }
             if (foundSectionStart) {
                 if (line.contains("Page") || line.contains("page")) continue;
-                if (line.contains(field.getKeyword()) || line.contains(keywordImperial)) {
+                if (line.replaceAll("\\s", "").contains(field.getKeyword().replaceAll("\\s", ""))
+                        || line.replaceAll("\\s", "").contains(keywordImperial.replaceAll("\\s", ""))) {
                     if (content_confidence.get(i) < confThreshold) lowConfContent.add(line);
                     Matcher matcher = pattern.matcher(line);
                     if (matcher.find()) {
@@ -1123,21 +1216,23 @@ public class DataExtractor {
         }
     }
 
-    private HashMap<String, List<String>> extractBuildingParameters(List<String> content, List<Float> content_confidence, String start,
-                                                                    String end, Pattern pattern) {
+    private HashMap<String, List<String>> extractBuildingParameters(List<String> content, List<Float> content_confidence, String start1,
+                                                                    String end1, Pattern pattern) {
         HashMap<String, List<String>> buildingParametersZone = new HashMap<>();
 
         boolean foundSectionStart = false;
+        String start = start1.replaceAll("\\s", "");
+        String end = end1.replaceAll("\\s", "");
 
         for (int i = 0; i < content.size(); i++) {
             String line = content.get(i);
             if (line.contains("Page") || line.contains("page")) continue;
-            if (line.contains(start)) {
+            if (line.replaceAll("\\s", "").contains(start)) {
                 foundSectionStart = true;
                 continue;
             }
             if (foundSectionStart) {
-                if (line.contains(end)) break;
+                if (line.replaceAll("\\s", "").contains(end)) break;
 
                 Matcher valueMatcher = pattern.matcher(line);
                 if (valueMatcher.find()) {
@@ -1180,15 +1275,16 @@ public class DataExtractor {
     }
 
     private List<List<String>> extractTableComponents(List<String> content, List<Float> content_confidence, String sectionStart,
-                                                     String end, Pattern pattern, int numColumns) {
+                                                     String end1, Pattern pattern, int numColumns) {
         List<List<String>> components = new ArrayList<>();
         boolean foundStartMarker = false;
+        String end = end1.replaceAll("\\s", "");
 
         label:
         for (int i = 0; i < content.size(); i++) {
             String line = content.get(i);
             if (line.contains("Page") || line.contains("page")) continue;
-            if (line.startsWith(sectionStart)) {
+            if (line.replaceAll("\\s", "").startsWith(sectionStart.replaceAll("\\s", ""))) {
                 foundStartMarker = true;
                 continue;
             }
@@ -1215,7 +1311,7 @@ public class DataExtractor {
                         if (endMatcher.find()) break label;
                     }
                     default -> {
-                        if (line.contains(end)) break label;
+                        if (line.replaceAll("\\s", "").contains(end)) break label;
                     }
                 }
 
