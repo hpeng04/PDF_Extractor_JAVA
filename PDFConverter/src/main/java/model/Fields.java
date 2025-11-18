@@ -15,6 +15,7 @@ public enum Fields {
     DATE_OF_ENTRY(" ", "Date of entry", "Date of entry:", "dataOfEntry", false), // Date the data was entered or recorded
     COMPANY(" ", "Company", "Company:", "company", false), // Company associated with the report
     ADDRESS(" ", "Address", "Street address:", "address", false), // Address of the building or location
+    MUNICIPALITY(" ", "Municipality", "Weather Data for:", "municipality", false), // Municipality for weather data reference
 
     // GENERAL HOUSE CHARACTERISTICS
     FRONT_ORIENTATION("GENERAL HOUSE CHARACTERISTICS", "Front orientation", "Front orientation:", "frontOrientation", false),
@@ -148,7 +149,7 @@ public enum Fields {
             "Furnace/Boiler Seasonal efficiency:", "furnaceBoilerSeasonalEfficiency", false),
     FURNACE_BOILER_ANNUAL_ENERGY_CONSUMPTION("ANNUAL SPACE HEATING SUMMARY", "Furnace/Boiler Annual Energy Consumption MJ",
             "Furnace/Boiler Annual Energy", "furnaceBoilerAnnualEnergyConsumption", true),
-    ANNUAL_SPACE_HETING_ENERGY("ANNUAL SPACE HEATING SUMMARY", "Annual Space Heating Energy Consumption (MJ)",
+    ANNUAL_SPACE_HEATING_ENERGY("ANNUAL SPACE HEATING SUMMARY", "Annual Space Heating Energy Consumption (MJ)",
             "Annual Space Heating Energy Consumption", "annualSpaceHeatingEnergyConsumption",true),
 
     // DESIGN SPACE HEATING AND COOLING LOADS (Calculated peak loads)
@@ -156,6 +157,10 @@ public enum Fields {
             "designHeatLoss", true),
     DESIGN_COOLING_LOAD("DESIGN SPACE HEATING AND COOLING LOADS", "Design Cooling Load* for July (Watts)", "Design Cooling Load",
             "designCoolingLoad", true),
+
+    // BASE LOADS SUMMARY
+    INTERIOR_LIGHTING_ENERGY("BASE LOADS SUMMARY", "Interior Lighting Annual (kWh)", "Interior Lighting",
+            "interiorLightingEnergy", true),
 
     // Section headers for broader categories
     SPACE_HEATING_SYSTEM_PERFORMANCE("SPACE HEATING SYSTEM PERFORMANCE", "SPACE HEATING SYSTEM PERFORMANCE", "SPACE HEATING SYSTEM PERFORMANCE",
@@ -167,15 +172,15 @@ public enum Fields {
     private final String title;  // User-friendly title for display (e.g., Excel header).
     private final String keyword; // Keyword to search for in the PDF text to find this field.
     private final String fieldName; // Programmatic name for the field.
-    private final boolean requiresUnitConversion; // True if the extracted value needs unit conversion.
+    private final boolean requiresUnitConversion; // Convert imperial to metric if true.
 
     /**
      * Constructor for the Fields enum.
-     * @param parent The parent category/section.
-     * @param title The display title.
-     * @param keyword The keyword for PDF text search.
-     * @param fieldName The programmatic field name.
-     * @param requiresUnitConversion Flag for unit conversion requirement.
+     * @param parent 
+     * @param title
+     * @param keyword 
+     * @param fieldName 
+     * @param requiresUnitConversion 
      */
     Fields(String parent, String title, String keyword, String fieldName, boolean requiresUnitConversion) {
         this.parent = parent;

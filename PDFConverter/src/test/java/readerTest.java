@@ -2,7 +2,6 @@ import static imgprocessor.PdfImageProcessor.*;
 
 import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.TesseractException;
-import org.junit.Ignore;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import readers.PdfReader;

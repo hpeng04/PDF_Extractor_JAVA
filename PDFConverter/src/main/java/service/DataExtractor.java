@@ -599,7 +599,7 @@ public class DataExtractor {
                             }
 
                         }
-                        case ANNUAL_SPACE_HETING_ENERGY -> {
+                        case ANNUAL_SPACE_HEATING_ENERGY -> {
                             Pattern pattern = Pattern.compile("^Annual Space Heating Energy");
                             for (int i = 0; i < content.size(); i++) {
                                 String line = content.get(i);
@@ -613,6 +613,27 @@ public class DataExtractor {
                                                 ConversionType.ENERGY.convert(Float.parseFloat(valueMatcher.group()));
                                         data.setAnnualSpaceHeatingEnergyConsumption(String.format("%.3f", value));
                                         break;
+                                    }
+                                }
+                            }
+                        }
+                        case INTERIOR_LIGHTING_ENERGY -> {
+                            Pattern pattern = Pattern.compile("^Interior Lighting");
+                            for (int i = 0; i < content.size(); i++) {
+                                String line = content.get(i);
+                                if (pattern.matcher(line).find()) {
+                                    Pattern pattern2 = Pattern.compile("Annual");
+                                    if (pattern2.matcher(line).find()) {
+                                        if (content_confidence.get(i) < confThreshold) lowConfContent.add(field.getTitle());
+                                        Pattern valuePattern = Pattern.compile("\\d+(\\.\\d+)?");
+                                        Matcher valueMatcher = valuePattern.matcher(line);
+                                        if (valueMatcher.find()) {
+                                            float value = isSIUnit() ?
+                                                    Float.parseFloat(valueMatcher.group()) :
+                                                    ConversionType.ENERGY.convert(Float.parseFloat(valueMatcher.group()));
+                                            data.setInteriorLightingEnergy(String.format("%.3f", value));
+                                            break;
+                                        }
                                     }
                                 }
                             }

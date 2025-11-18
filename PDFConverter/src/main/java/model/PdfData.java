@@ -23,6 +23,7 @@ public class PdfData {
     private String dataOfEntry; // Date of data entry or report generation
     private String company; // Company associated with the data/report
     private String address; // Address of the building or location
+    private String municipality; // Municipality for weather data reference
 
     // General House Characteristics
     private String frontOrientation; // Compass orientation of the front of the house
@@ -124,6 +125,9 @@ public class PdfData {
     // Design Space Heating and Cooling Loads
     private String designHeatLoss; // Design heat loss in Watts
     private String designCoolingLoad; // Design cooling load for July in Watts
+
+    // Base Loads Summary
+    private String interiorLightingEnergy;
 
     // Performance and Monthly Consumption Data (complex structures)
     // Key: Month (e.g., "Jan"), Value: List of performance metrics (e.g., Space Heating Load, Furnace Input, System COP)
