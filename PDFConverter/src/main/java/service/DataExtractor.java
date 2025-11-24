@@ -628,10 +628,7 @@ public class DataExtractor {
                                         value = Float.parseFloat(m.group()); 
                                     }
                                     if (value != -1f) {
-                                        float convertedValue = isSIUnit() ?
-                                                value :
-                                                ConversionType.ENERGY.convert(value);
-                                        data.setInteriorLightingEnergy(String.format("%.3f", convertedValue));
+                                        data.setInteriorLightingEnergy(String.format("%.2f", value));
                                     }
                                     break; 
                                 }
