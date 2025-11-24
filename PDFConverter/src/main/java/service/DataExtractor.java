@@ -621,21 +621,16 @@ public class DataExtractor {
                             Pattern pattern = Pattern.compile("^Interior Lighting");
                             for (int i = 0; i < content.size(); i++) {
                                 String line = content.get(i);
-                                System.out.println(i + ": \"" + line + "\"");
                                 if (pattern.matcher(line).find()) {
-                                    Pattern pattern2 = Pattern.compile("Annual");
-                                    if (pattern2.matcher(line).find()) {
-                                        if (content_confidence.get(i) < confThreshold) lowConfContent.add(field.getTitle());
-                                        Pattern valuePattern = Pattern.compile("\\d+(\\.\\d+)?");
-                                        Matcher valueMatcher = valuePattern.matcher(line);
-                                        if (valueMatcher.find()) {
-                                            float value = isSIUnit() ?
-                                                    Float.parseFloat(valueMatcher.group()) :
-                                                    ConversionType.ENERGY.convert(Float.parseFloat(valueMatcher.group()));
-                                            data.setInteriorLightingEnergy(String.format("%.3f", value));
-                                            break;
-                                        }
+                                    Matcher m = Pattern.compile("(\\d+\\.\\d+|\\d+)").matcher(line);
+                                    float lastNumber = -1f;
+                                    while (m.find()) {
+                                        lastNumber = Float.parseFloat(m.group()); 
                                     }
+                                    if (lastNumber != -1f) {
+                                        data.setInteriorLightingEnergy(String.format("%.3f", lastNumber));
+                                    }
+                                    break; 
                                 }
                             }
                         }
