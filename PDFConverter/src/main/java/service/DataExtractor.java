@@ -623,12 +623,15 @@ public class DataExtractor {
                                 String line = content.get(i);
                                 if (pattern.matcher(line).find()) {
                                     Matcher m = Pattern.compile("(\\d+\\.\\d+|\\d+)").matcher(line);
-                                    float lastNumber = -1f;
+                                    float value = -1f;
                                     while (m.find()) {
-                                        lastNumber = Float.parseFloat(m.group()); 
+                                        value = Float.parseFloat(m.group()); 
                                     }
-                                    if (lastNumber != -1f) {
-                                        data.setInteriorLightingEnergy(String.format("%.3f", lastNumber));
+                                    if (value != -1f) {
+                                        float convertedValue = isSIUnit() ?
+                                                value :
+                                                ConversionType.ENERGY.convert(value);
+                                        data.setInteriorLightingEnergy(String.format("%.3f", convertedValue));
                                     }
                                     break; 
                                 }
