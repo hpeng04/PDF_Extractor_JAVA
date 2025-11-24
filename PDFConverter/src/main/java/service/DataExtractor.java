@@ -621,6 +621,7 @@ public class DataExtractor {
                             Pattern pattern = Pattern.compile("^Interior Lighting");
                             for (int i = 0; i < content.size(); i++) {
                                 String line = content.get(i);
+                                System.out.println(i + ": \"" + line + "\"");
                                 if (pattern.matcher(line).find()) {
                                     Pattern pattern2 = Pattern.compile("Annual");
                                     if (pattern2.matcher(line).find()) {
